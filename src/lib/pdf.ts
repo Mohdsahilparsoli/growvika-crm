@@ -127,7 +127,7 @@ function signature(doc: jsPDF, db: DB) {
   doc.setFontSize(8.5);
   doc.setTextColor(...DARK);
   doc.setFont("helvetica", "bold");
-  doc.text("Authorised Signatory", x + boxW / 2, bottom - 5, { align: "center" });
+  doc.text("Authorised Signature", x + boxW / 2, bottom - 5, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...MUTED);
   doc.text(`For ${db.company.name}`, x + boxW / 2, bottom - 1, { align: "center" });
