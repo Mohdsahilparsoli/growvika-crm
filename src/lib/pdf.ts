@@ -121,7 +121,7 @@ export async function paymentInvoicePDF(db: DB, p: Payment) {
   const y = billTo(doc, c, 46);
 
   const decided = planDecided(c);
-  const planText = decided ? [c.plan, c.billingCycle].filter(Boolean).join(" / ") : "Advance (plan to be decided)";
+  const planText = decided ? [[c.planCategory, c.plan].filter(Boolean).join(": "), c.billingCycle].filter(Boolean).join(" / ") : "Advance (plan to be decided)";
   const desc = [planText, c.services.length ? `${c.services.join(", ")} services` : "", p.note].filter(Boolean).join(" - ");
   const body: (string | { content: string; styles: object })[][] = [];
   if (withGst) {

@@ -5,6 +5,7 @@ import { Plus, Pencil, X } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { Company, Role, Settings, User } from "@/lib/types";
 import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Td, Th } from "@/components/ui";
+import PlanEditor from "@/components/PlanEditor";
 
 function ListEditor({ label, items, onChange }: { label: string; items: string[]; onChange: (v: string[]) => void }) {
   const [val, setVal] = useState("");
@@ -188,11 +189,12 @@ export default function TeamPage() {
         </Card>
       </div>
 
+      <PlanEditor />
+
       <Card className="mt-6 p-5">
         <h3 className="font-medium text-slate-900">Your lists</h3>
         <p className="text-xs text-slate-500">These options appear in the forms across the app. Changes save instantly.</p>
-        <div className="mt-5 grid gap-6 lg:grid-cols-2">
-          <ListEditor label="Plans" items={db.settings.plans ?? []} onChange={(v) => update((d) => ({ ...d, settings: { ...d.settings, plans: v } }))} />
+        <div className="mt-5 grid gap-6 lg:grid-cols-3">
           <ListEditor label="Services" items={db.settings.services} onChange={(v) => update((d) => ({ ...d, settings: { ...d.settings, services: v } }))} />
           <ListEditor label="Lead sources" items={db.settings.leadSources} onChange={(v) => update((d) => ({ ...d, settings: { ...d.settings, leadSources: v } }))} />
           <ListEditor label="Expense categories" items={db.settings.expenseCategories} onChange={(v) => update((d) => ({ ...d, settings: { ...d.settings, expenseCategories: v } }))} />

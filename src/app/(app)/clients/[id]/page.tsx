@@ -146,7 +146,7 @@ export default function ClientDetail() {
                 {decided ? <Badge tone="green">Plan decided</Badge> : <Badge tone="amber">Plan not decided yet</Badge>}
               </div>
               <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-3">
-                <div><dt className="text-xs text-slate-500">Plan</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? c.plan || "—" : "To be decided"}</dd></div>
+                <div><dt className="text-xs text-slate-500">Plan</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? c.plan || "—" : "To be decided"}{decided && c.planCategory && <span className="block text-xs text-slate-500">{c.planCategory}</span>}</dd></div>
                 <div><dt className="text-xs text-slate-500">Billing cycle</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? c.billingCycle || "—" : "To be decided"}</dd></div>
                 {isAdmin && <div><dt className="text-xs text-slate-500">Package amount</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? inr(c.totalBilling) : "To be decided"}</dd></div>}
               </dl>

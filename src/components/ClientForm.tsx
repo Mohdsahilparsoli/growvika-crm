@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BILLING_CYCLES, Client, ClientStatus } from "@/lib/types";
+import { inr } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { Button, Field, Input, Select, Textarea } from "./ui";
 import { todayISO } from "@/lib/format";
@@ -43,6 +44,30 @@ export default function ClientForm({
   const [err, setErr] = useState("");
   const set = <K extends keyof Client>(k: K, v: Client[K]) => {
     setC((p) => ({ ...p, [k]: v }));
+    setErr("");
+  };
+
+  const planCategories = Array.from(new Set(db.settings.plans.map((p) => p.category)));
+  const matched = db.settings.plans.find((p) => p.name === c.plan && (!c.planCategory || p.category === c.planCategory));
+  const [customMode, setCustomMode] = useState(!!c.plan && !matched);
+  const selectedPlan = customMode ? undefined : matched;
+  const selectedPlanId = customMode ? "__custom" : matched?.id ?? "";
+
+  const choosePlan = (id: string) => {
+    if (id === "__custom") {
+      setCustomMode(true);
+      setC((p) => ({ ...p, planCategory: "Custom" }));
+      return;
+    }
+    setCustomMode(false);
+    const p = db.settings.plans.find((x) => x.id === id);
+    setC((prev) => ({
+      ...prev,
+      plan: p?.name ?? "",
+      planCategory: p?.category ?? "",
+      billingCycle: p?.cycle || prev.billingCycle,
+      totalBilling: p ? p.price : prev.totalBilling,
+    }));
     setErr("");
   };
 
@@ -126,16 +151,43 @@ export default function ClientForm({
         </div>
         {(c.planStatus ?? "Decided") === "Decided" ? (
           <div className="mt-3 grid gap-4 sm:grid-cols-3">
-            <Field label="Plan">
-              <Select value={c.plan ?? ""} onChange={(e) => set("plan", e.target.value)} options={[{ value: "", label: "Select plan" }, ...Array.from(new Set([...db.settings.plans, c.plan ?? ""].filter(Boolean)))]} />
+            <Field label="Plan" full>
+              <select
+                value={selectedPlanId}
+                onChange={(e) => choosePlan(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="">Select a plan</option>
+                {planCategories.map((cat) => (
+                  <optgroup key={cat} label={cat}>
+                    {db.settings.plans.filter((p) => p.category === cat).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}{isAdmin ? ` — ${inr(p.price)}` : ""}{p.cycle ? ` / ${p.cycle}` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+                <option value="__custom">Custom plan (type your own)</option>
+              </select>
             </Field>
+            {db.settings.plans.length === 0 && (
+              <p className="text-xs text-amber-700 sm:col-span-3">No plans added yet. Add your plans with prices in Team &amp; Settings → Plans &amp; prices.</p>
+            )}
+            {selectedPlanId === "__custom" && (
+              <Field label="Custom plan name">
+                <Input value={c.plan ?? ""} onChange={(e) => set("plan", e.target.value)} placeholder="e.g. Website + SEO combo" />
+              </Field>
+            )}
             <Field label="Billing cycle">
-              <Select value={c.billingCycle ?? ""} onChange={(e) => set("billingCycle", e.target.value)} options={[{ value: "", label: "Select" }, ...BILLING_CYCLES]} />
+              <Select value={c.billingCycle ?? ""} onChange={(e) => set("billingCycle", e.target.value)} options={[{ value: "", label: "Select" }, ...Array.from(new Set([...BILLING_CYCLES, c.billingCycle ?? ""].filter(Boolean)))]} />
             </Field>
             {isAdmin && (
-              <Field label="Total package amount (₹)">
+              <Field label="Package amount (₹)">
                 <Input type="number" min={0} value={c.totalBilling || ""} onChange={(e) => set("totalBilling", Number(e.target.value))} />
               </Field>
+            )}
+            {isAdmin && selectedPlan && c.totalBilling !== selectedPlan.price && (
+              <p className="text-xs text-slate-500 sm:col-span-3">Plan price is {inr(selectedPlan.price)}. You changed it to {inr(c.totalBilling)} (e.g. a discount).</p>
             )}
           </div>
         ) : (

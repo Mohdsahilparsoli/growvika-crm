@@ -1,7 +1,7 @@
 import "server-only";
 import { db, deleteRecord, deleteWhere, getRecord, getSetting, listRecords, nextInvoiceNumber, putRecord } from "./db";
 import { SessionUser } from "./auth";
-import { DEFAULT_COMPANY, DEFAULT_SETTINGS } from "@/lib/defaults";
+import { DEFAULT_COMPANY, DEFAULT_SETTINGS, normalizePlans } from "@/lib/defaults";
 import { Client, Comm, Company, DB, Expense, Lead, Payment, Settings, User } from "@/lib/types";
 
 export const COLLECTIONS = ["clients", "payments", "leads", "comms", "expenses"] as const;
@@ -46,6 +46,7 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
         planStatus: pick(raw.planStatus, ["Decided", "Not decided"] as const, "Decided"),
         plan: str(raw.plan, 100),
         billingCycle: str(raw.billingCycle, 50),
+        planCategory: str(raw.planCategory, 80),
       };
       if (c.planStatus === "Not decided") c.totalBilling = 0;
       if (!c.name || !c.business) throw new HttpError(400, "Client name and business name are required");
@@ -133,13 +134,13 @@ export async function snapshot(user: SessionUser): Promise<DB> {
   const users = usersRes.rows as User[];
   if (admin) {
     const [payments, expenses] = await Promise.all([listRecords<Payment>("payments"), listRecords<Expense>("expenses")]);
-    return { company, settings: { ...DEFAULT_SETTINGS, ...settings }, invoiceCounter: Number(counter), users, clients, leads, comms, payments, expenses };
+    return { company, settings: { ...DEFAULT_SETTINGS, ...settings, plans: normalizePlans(settings.plans) }, invoiceCounter: Number(counter), users, clients, leads, comms, payments, expenses };
   }
   const myClients = clients.filter((c) => c.assignedTo === user.id).map((c) => ({ ...c, totalBilling: 0 }));
   const ids = new Set(myClients.map((c) => c.id));
   return {
     company,
-    settings: { ...DEFAULT_SETTINGS, ...settings },
+    settings: { ...DEFAULT_SETTINGS, ...settings, plans: normalizePlans(settings.plans) },
     invoiceCounter: 0,
     users: users.map((u) => ({ ...u, email: u.id === user.id ? u.email : "" })),
     clients: myClients,

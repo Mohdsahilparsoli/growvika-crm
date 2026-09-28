@@ -34,6 +34,7 @@ export interface Client {
   planStatus?: PlanStatus;
   plan?: string;
   billingCycle?: string;
+  planCategory?: string;
 }
 
 export type PayMode = "UPI" | "Bank Transfer" | "Cash" | "Cheque";
@@ -105,9 +106,17 @@ export interface Company {
   udyam?: string;
 }
 
+export interface PlanOption {
+  id: string;
+  category: string;
+  name: string;
+  price: number;
+  cycle: string;
+}
+
 export interface Settings {
   services: string[];
-  plans: string[];
+  plans: PlanOption[];
   leadSources: string[];
   expenseCategories: string[];
   invoicePrefix: string;
