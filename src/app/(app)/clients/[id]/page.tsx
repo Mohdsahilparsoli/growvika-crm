@@ -9,7 +9,7 @@ import { Badge, Button, Card, Empty, Field, Input, Modal, Select, Textarea } fro
 import ClientForm from "@/components/ClientForm";
 import BillingPanel from "@/components/BillingPanel";
 import { COMM_TYPES, Comm, CommType } from "@/lib/types";
-import { clientBalance, fmtDate, inr, statusTone, todayISO, waLink } from "@/lib/format";
+import { clientBalance, fmtDate, inr, paidFor, planDecided, statusTone, todayISO, waLink } from "@/lib/format";
 
 type Tab = "profile" | "billing" | "comms";
 
@@ -44,6 +44,8 @@ export default function ClientDetail() {
 
   const comms = db.comms.filter((m) => m.clientId === c.id).sort((a, b) => b.date.localeCompare(a.date));
   const bal = clientBalance(db, c.id);
+  const paid = paidFor(db, c.id);
+  const decided = planDecided(c);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "profile", label: "Profile" },
@@ -128,7 +130,7 @@ export default function ClientDetail() {
                   ["WhatsApp", c.whatsapp || c.phone],
                   ["Email", c.email || "—"],
                   ["GST number", c.gst || "—"],
-                  ["Address", `${c.address}, ${c.city}, ${c.state}`],
+                  ["Address", [c.address, c.city, c.state].filter(Boolean).join(", ") || "—"],
                   ["Assigned to", userName(c.assignedTo)],
                 ].map(([k, v]) => (
                   <div key={k}>
@@ -137,14 +139,29 @@ export default function ClientDetail() {
                   </div>
                 ))}
               </dl>
-              <div className="mt-5">
+            </Card>
+            <Card className="p-5 lg:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-medium text-slate-900">Plan &amp; services</h3>
+                {decided ? <Badge tone="green">Plan decided</Badge> : <Badge tone="amber">Plan not decided yet</Badge>}
+              </div>
+              <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-3">
+                <div><dt className="text-xs text-slate-500">Plan</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? c.plan || "—" : "To be decided"}</dd></div>
+                <div><dt className="text-xs text-slate-500">Billing cycle</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? c.billingCycle || "—" : "To be decided"}</dd></div>
+                {isAdmin && <div><dt className="text-xs text-slate-500">Package amount</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? inr(c.totalBilling) : "To be decided"}</dd></div>}
+              </dl>
+              <div className="mt-4">
                 <p className="text-xs text-slate-500">Services</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {c.services.length === 0 && <span className="text-sm text-slate-400">No services selected</span>}
                   {c.services.map((s) => (
                     <span key={s} className="rounded-md bg-brand-50 px-2 py-0.5 text-xs text-brand-700">{s}</span>
                   ))}
                 </div>
               </div>
+              {!decided && (
+                <Button variant="secondary" size="sm" className="mt-4" onClick={() => setEditing(true)}>Set plan now</Button>
+              )}
             </Card>
             <div className="space-y-4">
               <Card className="p-5">
@@ -154,11 +171,18 @@ export default function ClientDetail() {
               {isAdmin && (
                 <Card className="p-5">
                   <h3 className="font-medium text-slate-900">Billing summary</h3>
-                  <div className="mt-3 space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-slate-500">Total</span><span className="tabular-nums">{inr(c.totalBilling)}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Received</span><span className="tabular-nums text-emerald-600">{inr(c.totalBilling - bal)}</span></div>
-                    <div className="flex justify-between border-t border-slate-100 pt-2 font-medium"><span>Due</span><span className={`tabular-nums ${bal > 0 ? "text-red-600" : "text-emerald-600"}`}>{inr(bal)}</span></div>
-                  </div>
+                  {decided ? (
+                    <div className="mt-3 space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-slate-500">Total</span><span className="tabular-nums">{inr(c.totalBilling)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">Received</span><span className="tabular-nums text-emerald-600">{inr(paid)}</span></div>
+                      <div className="flex justify-between border-t border-slate-100 pt-2 font-medium"><span>Due</span><span className={`tabular-nums ${bal > 0 ? "text-red-600" : "text-emerald-600"}`}>{inr(bal)}</span></div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-slate-500">Advance received</span><span className="tabular-nums text-emerald-600">{inr(paid)}</span></div>
+                      <p className="border-t border-slate-100 pt-2 text-xs text-amber-700">Balance will show once the plan is decided.</p>
+                    </div>
+                  )}
                   <Button variant="secondary" size="sm" className="mt-4 w-full" onClick={() => setTab("billing")}>View billing history</Button>
                 </Card>
               )}

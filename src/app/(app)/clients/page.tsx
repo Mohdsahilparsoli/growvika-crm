@@ -7,7 +7,7 @@ import { Plus, Search } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { Badge, Button, Card, Empty, Input, Modal, PageHeader, Select } from "@/components/ui";
 import ClientForm, { emptyClient } from "@/components/ClientForm";
-import { clientBalance, inr, statusTone } from "@/lib/format";
+import { clientBalance, inr, paidFor, planDecided, statusTone } from "@/lib/format";
 
 export default function ClientsPage() {
   const { db, user, isAdmin, update, userName } = useStore();
@@ -72,13 +72,18 @@ export default function ClientsPage() {
                     <Badge tone={statusTone(c.status)}>{c.status}</Badge>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
+                    {planDecided(c) && c.plan && <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">{c.plan}{c.billingCycle ? ` · ${c.billingCycle}` : ""}</span>}
                     {c.services.map((s) => (
                       <span key={s} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{s}</span>
                     ))}
                   </div>
                   <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
                     <span>{userName(c.assignedTo)}</span>
-                    {isAdmin && (bal > 0 ? <span className="font-medium text-red-600">Due {inr(bal)}</span> : <span className="font-medium text-emerald-600">Fully paid</span>)}
+                    {!planDecided(c) ? (
+                      <span className="font-medium text-amber-600">Plan not decided{isAdmin && paidFor(db, c.id) > 0 ? ` · Advance ${inr(paidFor(db, c.id))}` : ""}</span>
+                    ) : (
+                      isAdmin && (bal > 0 ? <span className="font-medium text-red-600">Due {inr(bal)}</span> : <span className="font-medium text-emerald-600">Fully paid</span>)
+                    )}
                   </div>
                 </Card>
               </Link>

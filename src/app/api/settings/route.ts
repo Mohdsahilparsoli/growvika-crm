@@ -31,6 +31,7 @@ export async function PUT(req: Request) {
       const rate = Number(s.gstRate);
       await setSetting("settings", {
         services: list(s.services, cur.services),
+        plans: list(s.plans, cur.plans ?? DEFAULT_SETTINGS.plans),
         leadSources: list(s.leadSources, cur.leadSources),
         expenseCategories: list(s.expenseCategories, cur.expenseCategories),
         invoicePrefix: typeof s.invoicePrefix === "string" ? s.invoicePrefix.trim().slice(0, 20) : cur.invoicePrefix,

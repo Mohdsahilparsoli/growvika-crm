@@ -10,6 +10,8 @@ export interface User {
 }
 
 export type ClientStatus = "Active" | "Inactive" | "VIP";
+export type PlanStatus = "Decided" | "Not decided";
+export const BILLING_CYCLES = ["One-time", "Monthly", "Quarterly", "Half-yearly", "Yearly"];
 
 export interface Client {
   id: string;
@@ -29,6 +31,9 @@ export interface Client {
   assignedTo: string;
   totalBilling: number;
   gstApplicable: boolean;
+  planStatus?: PlanStatus;
+  plan?: string;
+  billingCycle?: string;
 }
 
 export type PayMode = "UPI" | "Bank Transfer" | "Cash" | "Cheque";
@@ -102,6 +107,7 @@ export interface Company {
 
 export interface Settings {
   services: string[];
+  plans: string[];
   leadSources: string[];
   expenseCategories: string[];
   invoicePrefix: string;

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { FileText } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Badge, Button, Card, PageHeader, Select, StatCard, Td, Th, Empty } from "@/components/ui";
-import { clientBalance, fmtDate, inr, inRange, paidFor, RANGE_LABELS, RangeKey } from "@/lib/format";
+import { clientBalance, fmtDate, inr, inRange, paidFor, planDecided, RANGE_LABELS, RangeKey } from "@/lib/format";
 import { paymentInvoicePDF } from "@/lib/pdf";
 
 export default function BillingPage() {
@@ -42,8 +42,9 @@ export default function BillingPage() {
             <tbody className="divide-y divide-slate-100">
               {db.clients.map((c) => {
                 const paid = paidFor(db, c.id);
-                const bal = c.totalBilling - paid;
-                const pct = c.totalBilling ? Math.min(100, (paid / c.totalBilling) * 100) : 0;
+                const decided = planDecided(c);
+                const bal = decided ? c.totalBilling - paid : 0;
+                const pct = decided && c.totalBilling ? Math.min(100, (paid / c.totalBilling) * 100) : 0;
                 return (
                   <tr key={c.id} className="hover:bg-slate-50/60">
                     <Td>
@@ -52,10 +53,10 @@ export default function BillingPage() {
                         <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                       </div>
                     </Td>
-                    <Td right>{inr(c.totalBilling)}</Td>
+                    <Td right>{decided ? inr(c.totalBilling) : <span className="text-amber-600">Not decided</span>}</Td>
                     <Td right className="text-emerald-600">{inr(paid)}</Td>
-                    <Td right className={bal > 0 ? "font-medium text-red-600" : "text-slate-400"}>{inr(bal)}</Td>
-                    <Td right>{bal <= 0 ? <Badge tone="green">Paid</Badge> : paid > 0 ? <Badge tone="amber">Partial</Badge> : <Badge tone="red">Pending</Badge>}</Td>
+                    <Td right className={bal > 0 ? "font-medium text-red-600" : "text-slate-400"}>{decided ? inr(bal) : "—"}</Td>
+                    <Td right>{!decided ? <Badge tone="amber">{paid > 0 ? "Advance" : "Plan pending"}</Badge> : bal <= 0 ? <Badge tone="green">Paid</Badge> : paid > 0 ? <Badge tone="amber">Partial</Badge> : <Badge tone="red">Pending</Badge>}</Td>
                   </tr>
                 );
               })}

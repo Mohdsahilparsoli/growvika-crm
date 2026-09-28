@@ -1,4 +1,6 @@
-import { DB } from "./types";
+import { Client, DB } from "./types";
+
+export const planDecided = (c: Pick<Client, "planStatus">) => c.planStatus !== "Not decided";
 
 export const inr = (n: number) =>
   "₹" + Math.round(n).toLocaleString("en-IN");
@@ -30,7 +32,7 @@ export const paidFor = (db: DB, clientId: string) =>
 
 export const clientBalance = (db: DB, clientId: string) => {
   const c = db.clients.find((x) => x.id === clientId);
-  if (!c) return 0;
+  if (!c || !planDecided(c)) return 0;
   return c.totalBilling - paidFor(db, clientId);
 };
 

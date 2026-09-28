@@ -43,7 +43,11 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
         assignedTo: str(raw.assignedTo, 100),
         totalBilling: Math.max(0, num(raw.totalBilling)),
         gstApplicable: !!raw.gstApplicable,
+        planStatus: pick(raw.planStatus, ["Decided", "Not decided"] as const, "Decided"),
+        plan: str(raw.plan, 100),
+        billingCycle: str(raw.billingCycle, 50),
       };
+      if (c.planStatus === "Not decided") c.totalBilling = 0;
       if (!c.name || !c.business) throw new HttpError(400, "Client name and business name are required");
       return c as unknown as Record<string, unknown>;
     }

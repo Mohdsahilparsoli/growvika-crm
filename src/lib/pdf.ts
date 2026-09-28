@@ -3,7 +3,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Client, DB, Expense, Payment } from "./types";
-import { fmtDate, pdfInr } from "./format";
+import { fmtDate, pdfInr, planDecided } from "./format";
 
 const BRAND: [number, number, number] = [61, 101, 254];
 const NAVY: [number, number, number] = [3, 8, 27];
@@ -120,7 +120,9 @@ export async function paymentInvoicePDF(db: DB, p: Payment) {
 
   const y = billTo(doc, c, 46);
 
-  const desc = `${c.services.join(", ")} services${p.note ? " - " + p.note : ""}`;
+  const decided = planDecided(c);
+  const planText = decided ? [c.plan, c.billingCycle].filter(Boolean).join(" / ") : "Advance (plan to be decided)";
+  const desc = [planText, c.services.length ? `${c.services.join(", ")} services` : "", p.note].filter(Boolean).join(" - ");
   const body: (string | { content: string; styles: object })[][] = [];
   if (withGst) {
     const rate = db.settings.gstRate || 0;
@@ -172,9 +174,16 @@ export async function paymentInvoicePDF(db: DB, p: Payment) {
   autoTable(doc, {
     startY: ty + 3,
     body: [
-      ["Total Billing (Package)", pdfInr(c.totalBilling)],
-      ["Received till this payment", pdfInr(paidTill)],
-      ["Balance Pending", pdfInr(c.totalBilling - paidTill)],
+      ...(decided
+        ? [
+            ["Total Billing (Package)", pdfInr(c.totalBilling)],
+            ["Received till this payment", pdfInr(paidTill)],
+            ["Balance Pending", pdfInr(c.totalBilling - paidTill)],
+          ]
+        : [
+            ["Plan", "To be decided"],
+            ["Advance received till this payment", pdfInr(paidTill)],
+          ]),
     ],
     theme: "plain",
     styles: { fontSize: 9.5 },
@@ -217,13 +226,14 @@ export async function fullBillPDF(db: DB, clientId: string) {
     .filter((x) => x.clientId === c.id)
     .sort((a, b) => a.date.localeCompare(b.date) || a.invoiceNo.localeCompare(b.invoiceNo));
   const paid = pays.reduce((s, p) => s + p.amount, 0);
-  const bal = c.totalBilling - paid;
+  const decided = planDecided(c);
+  const bal = decided ? c.totalBilling - paid : 0;
 
   const boxW = (W - 28 - 8) / 3;
   const boxes: [string, string, [number, number, number]][] = [
-    ["TOTAL BILLING", pdfInr(c.totalBilling), DARK],
-    ["TOTAL RECEIVED", pdfInr(paid), GREEN],
-    ["BALANCE PENDING", pdfInr(bal), bal > 0 ? [220, 38, 38] : GREEN],
+    decided ? ["TOTAL BILLING", pdfInr(c.totalBilling), DARK] : ["PLAN", "To be decided", DARK],
+    [decided ? "TOTAL RECEIVED" : "ADVANCE RECEIVED", pdfInr(paid), GREEN],
+    decided ? ["BALANCE PENDING", pdfInr(bal), bal > 0 ? [220, 38, 38] : GREEN] : ["BALANCE PENDING", "-", DARK],
   ];
   boxes.forEach(([label, val, col], i) => {
     const x = 14 + i * (boxW + 4);
@@ -259,7 +269,7 @@ export async function fullBillPDF(db: DB, clientId: string) {
 
   const ty = lastY(doc) + 8;
   doc.setFontSize(9);
-  doc.text(`Services: ${c.services.join(", ")}`, 14, ty);
+  doc.text(`Plan: ${decided ? [c.plan, c.billingCycle].filter(Boolean).join(" / ") || "-" : "To be decided"}   |   Services: ${c.services.join(", ") || "-"}`, 14, ty);
   doc.text(`Total payments: ${pays.length}`, 14, ty + 5);
 
   footer(doc, db);

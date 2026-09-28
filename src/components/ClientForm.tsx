@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Client, ClientStatus } from "@/lib/types";
+import { BILLING_CYCLES, Client, ClientStatus } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Field, Input, Select, Textarea } from "./ui";
 import { todayISO } from "@/lib/format";
@@ -24,6 +24,9 @@ export const emptyClient = (assignedTo: string): Client => ({
   assignedTo,
   totalBilling: 0,
   gstApplicable: false,
+  planStatus: "Not decided",
+  plan: "",
+  billingCycle: "",
 });
 
 export default function ClientForm({
@@ -104,11 +107,45 @@ export default function ClientForm({
       <Field label="Client since">
         <Input type="date" value={c.joinedAt} onChange={(e) => set("joinedAt", e.target.value)} />
       </Field>
+      <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4 sm:col-span-2">
+        <p className="text-xs font-medium text-slate-600">Plan</p>
+        <div className="mt-2 inline-flex rounded-lg border border-slate-300 bg-white p-0.5">
+          {(["Decided", "Not decided"] as const).map((ps) => {
+            const on = (c.planStatus ?? "Decided") === ps;
+            return (
+              <button
+                type="button"
+                key={ps}
+                onClick={() => set("planStatus", ps)}
+                className={`rounded-md px-3 py-1.5 text-sm ${on ? "bg-brand-500 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+              >
+                {ps === "Decided" ? "Plan decided" : "Not decided yet"}
+              </button>
+            );
+          })}
+        </div>
+        {(c.planStatus ?? "Decided") === "Decided" ? (
+          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+            <Field label="Plan">
+              <Select value={c.plan ?? ""} onChange={(e) => set("plan", e.target.value)} options={[{ value: "", label: "Select plan" }, ...Array.from(new Set([...db.settings.plans, c.plan ?? ""].filter(Boolean)))]} />
+            </Field>
+            <Field label="Billing cycle">
+              <Select value={c.billingCycle ?? ""} onChange={(e) => set("billingCycle", e.target.value)} options={[{ value: "", label: "Select" }, ...BILLING_CYCLES]} />
+            </Field>
+            {isAdmin && (
+              <Field label="Total package amount (₹)">
+                <Input type="number" min={0} value={c.totalBilling || ""} onChange={(e) => set("totalBilling", Number(e.target.value))} />
+              </Field>
+            )}
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-slate-500">
+            You can still record advance payments. Once the client chooses a plan, come back here, select &quot;Plan decided&quot; and enter the plan and amount. The balance will be calculated then.
+          </p>
+        )}
+      </div>
       {isAdmin && (
         <>
-          <Field label="Total billing / package amount (₹)">
-            <Input type="number" min={0} value={c.totalBilling || ""} onChange={(e) => set("totalBilling", Number(e.target.value))} />
-          </Field>
           <Field label="Assigned to">
             <Select
               value={c.assignedTo}

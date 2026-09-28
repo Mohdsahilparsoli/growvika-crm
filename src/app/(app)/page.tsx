@@ -5,7 +5,7 @@ import { Users, TrendingUp, Clock, Wallet, Target, PhoneCall } from "lucide-reac
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useStore } from "@/lib/store";
 import { Badge, Card, PageHeader, StatCard, Empty } from "@/components/ui";
-import { clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
+import { paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
 
 export default function Dashboard() {
   const { db, user, isAdmin, userName } = useStore();
@@ -24,6 +24,7 @@ export default function Dashboard() {
 
   const monthIncome = db.payments.filter((p) => inRange(p.date, "this")).reduce((s, p) => s + p.amount, 0);
   const monthExpense = db.expenses.filter((e) => inRange(e.date, "this")).reduce((s, e) => s + e.amount, 0);
+  const undecided = db.clients.filter((c) => !planDecided(c) && c.status !== "Inactive");
   const pending = db.clients
     .map((c) => ({ c, bal: clientBalance(db, c.id) }))
     .filter((x) => x.bal > 0)
@@ -129,6 +130,24 @@ export default function Dashboard() {
                   </li>
                 ))}
               </ul>
+            )}
+            {undecided.length > 0 && (
+              <div className="border-t border-slate-100">
+                <p className="px-5 pt-3 text-xs font-medium uppercase tracking-wide text-amber-600">Plan not decided ({undecided.length})</p>
+                <ul className="divide-y divide-slate-100">
+                  {undecided.map((c) => (
+                    <li key={c.id}>
+                      <Link href={`/clients/${c.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{c.business}</p>
+                          <p className="text-xs text-slate-500">{c.services.join(", ") || "No services yet"}</p>
+                        </div>
+                        <span className="text-xs tabular-nums text-emerald-600">{paidFor(db, c.id) > 0 ? `Advance ${inr(paidFor(db, c.id))}` : "No advance"}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </Card>
         ) : (

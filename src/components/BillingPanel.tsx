@@ -5,7 +5,7 @@ import { Download, FileText, Mail, Pencil, Plus, Send, Trash2, MessageCircle } f
 import { useStore, uid } from "@/lib/store";
 import { PAY_MODES, Payment, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, StatCard, Td, Th } from "./ui";
-import { fmtDate, inr, mailLink, todayISO, waLink } from "@/lib/format";
+import { fmtDate, inr, mailLink, planDecided, todayISO, waLink } from "@/lib/format";
 import { fullBillPDF, paymentInvoicePDF } from "@/lib/pdf";
 
 type SendTarget = { kind: "payment"; payment: Payment } | { kind: "full" };
@@ -19,7 +19,8 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
     .filter((p) => p.clientId === clientId)
     .sort((a, b) => b.date.localeCompare(a.date) || b.invoiceNo.localeCompare(a.invoiceNo));
   const paid = pays.reduce((s, p) => s + p.amount, 0);
-  const bal = c.totalBilling - paid;
+  const decided = planDecided(c);
+  const bal = decided ? c.totalBilling - paid : 0;
 
   const [form, setForm] = useState<Payment | null>(null);
   const [err, setErr] = useState("");
@@ -61,8 +62,8 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
 
   const sendMsg = (t: SendTarget) =>
     t.kind === "payment"
-      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\nTotal package: ${inr(c.totalBilling)}\nBalance due: ${inr(c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0))}\n\nThank you,\n${db.company.name}`
-      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\nTotal billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(bal)}\n\nThank you,\n${db.company.name}`;
+      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\n${decided ? `Total package: ${inr(c.totalBilling)}\nBalance due: ${inr(c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0))}` : "This has been recorded as an advance. Your plan and final amount will be confirmed soon."}\n\nThank you,\n${db.company.name}`
+      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\n${decided ? `Total billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(bal)}` : `Advance received: ${inr(paid)}\nPlan and final amount: to be decided`}\n\nThank you,\n${db.company.name}`;
 
   const download = (t: SendTarget) => (t.kind === "payment" ? paymentInvoicePDF(db, t.payment) : fullBillPDF(db, clientId));
 
@@ -89,9 +90,19 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total billing" value={inr(c.totalBilling)} />
-        <StatCard label="Total received" value={inr(paid)} tone="good" />
-        <StatCard label="Balance pending" value={inr(bal)} tone={bal > 0 ? "bad" : "good"} hint={bal <= 0 ? "Fully paid" : undefined} />
+        {decided ? (
+          <>
+            <StatCard label="Total billing" value={inr(c.totalBilling)} hint={[c.plan, c.billingCycle].filter(Boolean).join(" · ") || undefined} />
+            <StatCard label="Total received" value={inr(paid)} tone="good" />
+            <StatCard label="Balance pending" value={inr(bal)} tone={bal > 0 ? "bad" : "good"} hint={bal <= 0 ? "Fully paid" : undefined} />
+          </>
+        ) : (
+          <>
+            <StatCard label="Plan" value="Not decided" tone="warn" hint="Set the plan from Edit client" />
+            <StatCard label="Advance received" value={inr(paid)} tone="good" />
+            <StatCard label="Balance pending" value="—" hint="Shows once the plan is decided" />
+          </>
+        )}
       </div>
 
       <Card className="overflow-hidden">
@@ -162,8 +173,8 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             </Field>
             {!form.id && (
               <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 sm:col-span-2">
-                Invoice number will be: <b>{nextInvoice}</b> · Currently due: {inr(bal)}
-                {form.amount > bal && bal > 0 && <span className="ml-1 text-amber-600">(more than the amount due)</span>}
+                Invoice number will be: <b>{nextInvoice}</b> · {decided ? `Currently due: ${inr(bal)}` : "Plan not decided, this will be recorded as an advance"}
+                {decided && form.amount > bal && bal > 0 && <span className="ml-1 text-amber-600">(more than the amount due)</span>}
               </p>
             )}
             {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
