@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, FileText, Mail, Pencil, Plus, Send, Trash2, MessageCircle } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { PAY_MODES, Payment, PayMode } from "@/lib/types";
@@ -11,7 +11,9 @@ import { fullBillPDF, paymentInvoicePDF } from "@/lib/pdf";
 type SendTarget = { kind: "payment"; payment: Payment } | { kind: "full" };
 
 export default function BillingPanel({ clientId }: { clientId: string }) {
-  const { db, update } = useStore();
+  const { db, update, saving } = useStore();
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+  const nextInvoice = `${db.settings.invoicePrefix}${String(db.invoiceCounter + 1).padStart(4, "0")}`;
   const c = db.clients.find((x) => x.id === clientId)!;
   const pays = db.payments
     .filter((p) => p.clientId === clientId)
@@ -22,6 +24,13 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   const [form, setForm] = useState<Payment | null>(null);
   const [err, setErr] = useState("");
   const [send, setSend] = useState<SendTarget | null>(null);
+
+  useEffect(() => {
+    if (!justAdded || saving) return;
+    const p = db.payments.find((x) => x.id === justAdded);
+    setJustAdded(null);
+    if (p) setSend({ kind: "payment", payment: p });
+  }, [justAdded, saving, db.payments]);
 
   const openNew = () => {
     setErr("");
@@ -37,14 +46,10 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
       update((d) => ({ ...d, payments: d.payments.map((p) => (p.id === form.id ? form : p)) }));
       setForm(null);
     } else {
-      let created: Payment | null = null;
-      update((d) => {
-        const n = d.invoiceCounter + 1;
-        created = { ...form, id: uid("p"), invoiceNo: `GV-${String(n).padStart(4, "0")}` };
-        return { ...d, invoiceCounter: n, payments: [...d.payments, created] };
-      });
+      const id = uid("p");
+      update((d) => ({ ...d, invoiceCounter: d.invoiceCounter + 1, payments: [...d.payments, { ...form, id, invoiceNo: nextInvoice }] }));
       setForm(null);
-      setTimeout(() => created && setSend({ kind: "payment", payment: created }), 50);
+      setJustAdded(id);
     }
   };
 
@@ -67,7 +72,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         <div>
           <p className="font-medium text-slate-900">{c.business} · Billing</p>
           <p className="text-xs text-slate-500">
-            {pays.length} payments · {c.gstApplicable ? "GST invoice (18%)" : "No GST"}
+            {pays.length} payments · {c.gstApplicable ? `GST invoice (${db.settings.gstRate}%)` : "No GST"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -157,7 +162,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             </Field>
             {!form.id && (
               <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 sm:col-span-2">
-                Invoice number will be: <b>GV-{String(db.invoiceCounter + 1).padStart(4, "0")}</b> · Currently due: {inr(bal)}
+                Invoice number will be: <b>{nextInvoice}</b> · Currently due: {inr(bal)}
                 {form.amount > bal && bal > 0 && <span className="ml-1 text-amber-600">(more than the amount due)</span>}
               </p>
             )}

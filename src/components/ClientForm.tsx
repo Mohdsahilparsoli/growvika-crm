@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Client, ClientStatus, SERVICES } from "@/lib/types";
+import { Client, ClientStatus } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Field, Input, Select, Textarea } from "./ui";
 import { todayISO } from "@/lib/format";
@@ -15,7 +15,7 @@ export const emptyClient = (assignedTo: string): Client => ({
   email: "",
   address: "",
   city: "",
-  state: "Uttarakhand",
+  state: "",
   gst: "",
   services: [],
   status: "Active",
@@ -81,7 +81,7 @@ export default function ClientForm({
       </Field>
       <Field label="Services" full>
         <div className="flex flex-wrap gap-2">
-          {SERVICES.map((s) => {
+          {Array.from(new Set([...db.settings.services, ...c.services])).map((s) => {
             const on = c.services.includes(s);
             return (
               <button
@@ -118,7 +118,7 @@ export default function ClientForm({
           </Field>
           <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
             <input type="checkbox" checked={c.gstApplicable} onChange={(e) => set("gstApplicable", e.target.checked)} className="h-4 w-4 accent-brand-500" />
-            Add GST (18%) to invoices
+            Add GST ({db.settings.gstRate}%) to invoices
           </label>
         </>
       )}

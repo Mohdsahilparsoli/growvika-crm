@@ -13,8 +13,10 @@ import {
   LogOut,
   Menu,
   X,
-  RotateCcw,
   Lock,
+  Loader2,
+  AlertTriangle,
+  Database,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 
@@ -28,19 +30,46 @@ const NAV = [
 ];
 
 export default function Shell({ children }: { children: ReactNode }) {
-  const { ready, user, isAdmin, logout, resetDemo } = useStore();
+  const { status, user, isAdmin, logout, saving, error, clearError } = useStore();
   const router = useRouter();
   const path = usePathname();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (ready && !user) router.replace("/login");
-  }, [ready, user, router]);
+    if (status === "signed-out") router.replace("/login");
+  }, [status, router]);
 
   useEffect(() => setOpen(false), [path]);
 
-  if (!ready || !user) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Loading…</div>;
+  if (status === "no-database") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
+        <Database className="text-slate-400" size={36} />
+        <p className="mt-3 text-lg font-medium text-slate-900">Database not connected</p>
+        <p className="mt-1 max-w-md text-sm text-slate-500">
+          Open your project on Vercel → Storage → Create Database → Neon, connect it to this project, then redeploy.
+        </p>
+      </div>
+    );
+  }
+
+  if (status === "error" && !user) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
+        <AlertTriangle className="text-amber-500" size={36} />
+        <p className="mt-3 text-lg font-medium text-slate-900">Something went wrong</p>
+        <p className="mt-1 max-w-md text-sm text-slate-500">{error}</p>
+        <button onClick={() => location.reload()} className="mt-4 rounded-lg border border-slate-300 px-3 py-1.5 text-sm">Try again</button>
+      </div>
+    );
+  }
+
+  if (status !== "ready" || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-slate-500">
+        <Loader2 className="animate-spin" size={16} /> Loading…
+      </div>
+    );
   }
 
   const items = NAV.filter((n) => isAdmin || !n.admin);
@@ -77,19 +106,9 @@ export default function Shell({ children }: { children: ReactNode }) {
           <p className="truncate text-sm font-medium text-white">{user.name}</p>
           <p className="text-xs capitalize text-slate-400">{user.role}</p>
         </div>
-        {isAdmin && (
-          <button
-            onClick={() => {
-              if (confirm("Reset the demo data? All your entries will be removed.")) resetDemo();
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"
-          >
-            <RotateCcw size={14} /> Reset demo data
-          </button>
-        )}
         <button
-          onClick={() => {
-            logout();
+          onClick={async () => {
+            await logout();
             router.replace("/login");
           }}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
@@ -121,6 +140,22 @@ export default function Shell({ children }: { children: ReactNode }) {
             </button>
             {nav}
           </aside>
+        </div>
+      )}
+
+      {(saving || error) && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-sm">
+          {error ? (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-white px-4 py-3 text-sm text-red-700 shadow-lg">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <span className="flex-1">{error}</span>
+              <button onClick={clearError} className="text-red-400 hover:text-red-700" aria-label="Dismiss"><X size={16} /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg bg-navy-900 px-3 py-2 text-xs text-white shadow-lg">
+              <Loader2 size={14} className="animate-spin" /> Saving…
+            </div>
+          )}
         </div>
       )}
 

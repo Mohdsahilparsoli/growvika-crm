@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, ChevronLeft, ChevronRight, Phone, Plus, UserPlus, Trash2 } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
-import { LEAD_SOURCES, LEAD_STAGES, Lead, LeadStage, SERVICES } from "@/lib/types";
+import { LEAD_STAGES, Lead, LeadStage } from "@/lib/types";
 import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Textarea } from "@/components/ui";
 import { emptyClient } from "@/components/ClientForm";
 import { fmtDate, todayISO } from "@/lib/format";
@@ -64,7 +64,7 @@ export default function LeadsPage() {
 
   const openNew = () => {
     setErr("");
-    setForm({ id: "", name: "", business: "", phone: "", source: "Instagram", service: "Social Media", stage: "New Lead", followUp: today, assignedTo: user!.id, note: "", lostReason: "", createdAt: today });
+    setForm({ id: "", name: "", business: "", phone: "", source: db.settings.leadSources[0] ?? "", service: db.settings.services[0] ?? "", stage: "New Lead", followUp: today, assignedTo: user!.id, note: "", lostReason: "", createdAt: today });
   };
 
   const openCount = leads.filter((l) => l.stage !== "Won" && l.stage !== "Lost").length;
@@ -155,8 +155,8 @@ export default function LeadsPage() {
             <Field label="Name *"><Input value={form.name} onChange={(e) => { setErr(""); setForm({ ...form, name: e.target.value }); }} autoFocus /></Field>
             <Field label="Business"><Input value={form.business} onChange={(e) => setForm({ ...form, business: e.target.value })} /></Field>
             <Field label="Phone *"><Input value={form.phone} onChange={(e) => { setErr(""); setForm({ ...form, phone: e.target.value }); }} inputMode="numeric" /></Field>
-            <Field label="Source"><Select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={LEAD_SOURCES} /></Field>
-            <Field label="Interested in"><Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} options={SERVICES} /></Field>
+            <Field label="Source"><Select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={Array.from(new Set([...db.settings.leadSources, form.source].filter(Boolean)))} /></Field>
+            <Field label="Interested in"><Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} options={Array.from(new Set([...db.settings.services, form.service].filter(Boolean)))} /></Field>
             <Field label="Stage"><Select value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as LeadStage })} options={LEAD_STAGES} /></Field>
             <Field label="Next follow-up"><Input type="date" value={form.followUp} onChange={(e) => setForm({ ...form, followUp: e.target.value })} /></Field>
             <Field label="Assigned to">

@@ -7,7 +7,6 @@ import { Plus, Search } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { Badge, Button, Card, Empty, Input, Modal, PageHeader, Select } from "@/components/ui";
 import ClientForm, { emptyClient } from "@/components/ClientForm";
-import { SERVICES } from "@/lib/types";
 import { clientBalance, inr, statusTone } from "@/lib/format";
 
 export default function ClientsPage() {
@@ -47,7 +46,7 @@ export default function ClientsPage() {
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, business, phone or city" className="pl-9" />
           </div>
           <Select value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: "All", label: "All statuses" }, "Active", "VIP", "Inactive"]} />
-          <Select value={service} onChange={(e) => setService(e.target.value)} options={[{ value: "All", label: "All services" }, ...SERVICES]} />
+          <Select value={service} onChange={(e) => setService(e.target.value)} options={[{ value: "All", label: "All services" }, ...db.settings.services]} />
         </div>
       </Card>
 

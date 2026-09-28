@@ -123,17 +123,18 @@ export async function paymentInvoicePDF(db: DB, p: Payment) {
   const desc = `${c.services.join(", ")} services${p.note ? " - " + p.note : ""}`;
   const body: (string | { content: string; styles: object })[][] = [];
   if (c.gstApplicable) {
-    const taxable = p.amount / 1.18;
+    const rate = db.settings.gstRate || 0;
+    const taxable = p.amount / (1 + rate / 100);
     const half = (p.amount - taxable) / 2;
-    body.push(["1", desc, "998361", pdfInr(taxable)]);
+    body.push(["1", desc, db.settings.sacCode || "-", pdfInr(taxable)]);
     autoTable(doc, {
       startY: y + 6,
       head: [["#", "Description", "SAC", "Amount"]],
       body,
       foot: [
         ["", "", "Taxable Value", pdfInr(taxable)],
-        ["", "", "CGST @ 9%", pdfInr(half)],
-        ["", "", "SGST @ 9%", pdfInr(half)],
+        ["", "", `CGST @ ${rate / 2}%`, pdfInr(half)],
+        ["", "", `SGST @ ${rate / 2}%`, pdfInr(half)],
         ["", "", "Total", pdfInr(p.amount)],
       ],
       theme: "grid",

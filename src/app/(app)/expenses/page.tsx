@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Download, Plus, Search, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useStore, uid } from "@/lib/store";
-import { EXPENSE_CATEGORIES, Expense, PAY_MODES, PayMode } from "@/lib/types";
+import { Expense, PAY_MODES, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Select, StatCard, Td, Textarea, Th } from "@/components/ui";
 import { fmtDate, inr, inRange, RANGE_LABELS, RangeKey, todayISO, totalExpense, totalIncome } from "@/lib/format";
 import { expenseReportPDF } from "@/lib/pdf";
@@ -30,7 +30,7 @@ export default function ExpensesPage() {
     })
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const byCat = EXPENSE_CATEGORIES.map((c) => ({ name: c, value: inPeriod.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0) }))
+  const byCat = Array.from(new Set([...db.settings.expenseCategories, ...inPeriod.map((e) => e.category)])).map((c) => ({ name: c, value: inPeriod.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0) }))
     .filter((x) => x.value > 0)
     .sort((a, b) => b.value - a.value);
 
@@ -58,7 +58,7 @@ export default function ExpensesPage() {
             <Button variant="secondary" onClick={() => expenseReportPDF(db, RANGE_LABELS[range], income, inPeriod)}>
               <Download size={16} /> Report PDF
             </Button>
-            <Button onClick={() => { setErr(""); setForm({ id: "", date: todayISO(), amount: 0, where: "", why: "", category: "Ads", mode: "UPI", note: "" }); }}>
+            <Button onClick={() => { setErr(""); setForm({ id: "", date: todayISO(), amount: 0, where: "", why: "", category: db.settings.expenseCategories[0] ?? "Other", mode: "UPI", note: "" }); }}>
               <Plus size={16} /> Add expense
             </Button>
           </>
@@ -129,7 +129,7 @@ export default function ExpensesPage() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search where / why" className="py-1.5 pl-8" />
             </div>
-            <Select value={cat} onChange={(e) => setCat(e.target.value)} options={[{ value: "All", label: "All categories" }, ...EXPENSE_CATEGORIES]} className="w-full py-1.5 sm:w-44" />
+            <Select value={cat} onChange={(e) => setCat(e.target.value)} options={[{ value: "All", label: "All categories" }, ...db.settings.expenseCategories]} className="w-full py-1.5 sm:w-44" />
           </div>
           {list.length === 0 ? <Empty text="No entries found" /> : (
             <div className="overflow-x-auto">
@@ -161,7 +161,7 @@ export default function ExpensesPage() {
             <Field label="Amount (₹) *"><Input type="number" min={1} value={form.amount || ""} onChange={(e) => { setErr(""); setForm({ ...form, amount: Number(e.target.value) }); }} autoFocus={!form.id} /></Field>
             <Field label="Where was it spent *" full><Input value={form.where} onChange={(e) => { setErr(""); setForm({ ...form, where: e.target.value }); }} placeholder="e.g. Meta Ads, Canva Pro, freelancer" /></Field>
             <Field label="Why was it spent *" full><Textarea value={form.why} onChange={(e) => { setErr(""); setForm({ ...form, why: e.target.value }); }} placeholder="e.g. Diwali ads for Sharma Traders" /></Field>
-            <Field label="Category"><Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} options={EXPENSE_CATEGORIES} /></Field>
+            <Field label="Category"><Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} options={Array.from(new Set([...db.settings.expenseCategories, form.category].filter(Boolean)))} /></Field>
             <Field label="Payment mode"><Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as PayMode })} options={PAY_MODES} /></Field>
             <Field label="Bill / receipt photo (demo saves the file name only)" full>
               <Input type="file" accept="image/*,.pdf" onChange={(e) => setForm({ ...form, note: e.target.files?.[0]?.name ? `Bill: ${e.target.files[0].name}` : form.note })} />

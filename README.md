@@ -1,6 +1,6 @@
 # GrowVika CRM
 
-GrowVika's client management software (demo). Built with Next.js and Tailwind. Data is saved in the browser's localStorage.
+GrowVika's client management software. Built with Next.js, Tailwind and Postgres (Neon). All data is stored in the database, so it's the same on every device.
 
 ## Modules
 1. **Team Login** – Admin and Employee roles
@@ -11,16 +11,20 @@ GrowVika's client management software (demo). Built with Next.js and Tailwind. D
 6. **Communication History** – calls, meetings, WhatsApp and file records
 7. **Company Account** – what came in, where and why it was spent, what's left, report PDF
 
-## Demo logins
-| Role | Email | Password |
-|---|---|---|
-| Admin | admin@growvika.com | admin123 |
-| Employee | riya@growvika.com | riya123 |
+## First-time setup
+1. On Vercel, open the project → **Storage** → **Create Database** → **Neon** and connect it to this project. This sets `DATABASE_URL`.
+2. Redeploy, then open the site. You'll see a **setup** screen to create the first admin account and company details.
+3. Tables are created automatically on first use.
+
+Optional: set `AUTH_SECRET` (any long random string) in Vercel environment variables to sign login sessions.
 
 ## Run locally
 ```bash
+cp .env.example .env.local   # fill in DATABASE_URL
 npm install
 npm run dev
 ```
 
-> Note: This is a demo. Data is stored only in the browser you use (localStorage). For real use, add a database (e.g. Supabase/Postgres) and proper authentication.
+## Roles
+- **Admin** – everything, including Billing, Company Account and Team & Settings
+- **Employee** – only their assigned clients, leads and communication history (enforced on the server)

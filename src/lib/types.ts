@@ -4,7 +4,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  password: string;
+  password?: string;
   role: Role;
   active: boolean;
 }
@@ -99,8 +99,18 @@ export interface Company {
   gst: string;
 }
 
+export interface Settings {
+  services: string[];
+  leadSources: string[];
+  expenseCategories: string[];
+  invoicePrefix: string;
+  gstRate: number;
+  sacCode: string;
+}
+
 export interface DB {
   company: Company;
+  settings: Settings;
   users: User[];
   clients: Client[];
   payments: Payment[];
@@ -110,16 +120,6 @@ export interface DB {
   invoiceCounter: number;
 }
 
-export const SERVICES = [
-  "SEO",
-  "Social Media",
-  "Meta Ads",
-  "Google Ads",
-  "Website",
-  "Branding",
-  "Content",
-];
-
 export const LEAD_STAGES: LeadStage[] = [
   "New Lead",
   "Contacted",
@@ -127,25 +127,6 @@ export const LEAD_STAGES: LeadStage[] = [
   "Proposal Sent",
   "Won",
   "Lost",
-];
-
-export const LEAD_SOURCES = [
-  "Instagram",
-  "Facebook",
-  "Referral",
-  "Website",
-  "Call",
-  "Google",
-];
-
-export const EXPENSE_CATEGORIES = [
-  "Ads",
-  "Tools / Software",
-  "Salary / Freelancer",
-  "Office",
-  "Travel",
-  "Equipment",
-  "Other",
 ];
 
 export const PAY_MODES: PayMode[] = ["UPI", "Bank Transfer", "Cash", "Cheque"];
