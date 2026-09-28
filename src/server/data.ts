@@ -61,6 +61,7 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
         mode: pick(raw.mode, ["UPI", "Bank Transfer", "Cash", "Cheque"] as const, "UPI"),
         invoiceNo: str(raw.invoiceNo, 50),
         note: str(raw.note, 500),
+        service: str(raw.service, 200),
       };
       if (!p.clientId || !p.date || p.amount <= 0) throw new HttpError(400, "Payment needs a client, date and amount");
       return p as unknown as Record<string, unknown>;

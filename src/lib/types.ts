@@ -47,6 +47,7 @@ export interface Payment {
   mode: PayMode;
   invoiceNo: string;
   note: string;
+  service?: string;
 }
 
 export type LeadStage =

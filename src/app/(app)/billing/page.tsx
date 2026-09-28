@@ -77,7 +77,7 @@ export default function BillingPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px]">
               <thead className="bg-slate-50">
-                <tr><Th>Date</Th><Th>Invoice</Th><Th>Client</Th><Th>Mode</Th><Th right>Amount</Th><Th right></Th></tr>
+                <tr><Th>Date</Th><Th>Invoice</Th><Th>Client</Th><Th>For</Th><Th>Mode</Th><Th right>Amount</Th><Th right></Th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {recent.map((p) => {
@@ -87,6 +87,7 @@ export default function BillingPage() {
                       <Td>{fmtDate(p.date)}</Td>
                       <Td className="font-mono text-xs">{p.invoiceNo}</Td>
                       <Td>{c?.business ?? "—"}</Td>
+                      <Td className="text-slate-500">{p.service || "—"}</Td>
                       <Td><Badge tone="blue">{p.mode}</Badge></Td>
                       <Td right className="font-semibold text-slate-900">{inr(p.amount)}</Td>
                       <Td right>{c && <Button size="sm" variant="secondary" onClick={() => paymentInvoicePDF(db, p)}><FileText size={14} /> PDF</Button>}</Td>

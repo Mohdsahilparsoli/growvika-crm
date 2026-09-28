@@ -34,9 +34,15 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
     if (p) setSend({ kind: "payment", payment: p });
   }, [justAdded, saving, db.payments]);
 
+  const [otherService, setOtherService] = useState(false);
+  const planLabel = decided && c.plan ? `${c.planCategory ? `${c.planCategory}: ` : ""}${c.plan}` : "";
+  const otherServices = db.settings.services.filter((s) => !c.services.includes(s));
+  const knownServices = [planLabel, ...c.services, ...otherServices].filter(Boolean);
+
   const openNew = () => {
     setErr("");
-    setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "" });
+    setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "", service: planLabel || c.services[0] || "" });
+    setOtherService(false);
   };
 
   const save = (e: React.FormEvent) => {
@@ -63,7 +69,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
 
   const sendMsg = (t: SendTarget) =>
     t.kind === "payment"
-      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\n${decided ? `Total package: ${inr(c.totalBilling)}\nBalance due: ${inr(Math.max(0, c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0)))}` : "This has been recorded as an advance. Your plan and final amount will be confirmed soon."}\n\nThank you,\n${db.company.name}`
+      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)}${t.payment.service ? ` for ${t.payment.service}` : ""} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\n${decided ? `Total package: ${inr(c.totalBilling)}\nBalance due: ${inr(Math.max(0, c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0)))}` : "This has been recorded as an advance. Your plan and final amount will be confirmed soon."}\n\nThank you,\n${db.company.name}`
       : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\n${decided ? `Total billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(Math.max(0, bal))}` : `Advance received: ${inr(paid)}\nPlan and final amount: to be decided`}\n\nThank you,\n${db.company.name}`;
 
   const download = (t: SendTarget) => (t.kind === "payment" ? paymentInvoicePDF(db, t.payment) : fullBillPDF(db, clientId));
@@ -120,6 +126,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                   <Th>Date</Th>
                   <Th>Invoice No.</Th>
                   <Th>Mode</Th>
+                  <Th>For</Th>
                   <Th>Note</Th>
                   <Th right>Amount</Th>
                   <Th right>Actions</Th>
@@ -131,6 +138,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                     <Td>{fmtDate(p.date)}</Td>
                     <Td className="font-mono text-xs">{p.invoiceNo}</Td>
                     <Td><Badge tone="blue">{p.mode}</Badge></Td>
+                    <Td className="text-slate-700">{p.service || "—"}</Td>
                     <Td className="text-slate-500">{p.note || "—"}</Td>
                     <Td right className="font-semibold text-slate-900">{inr(p.amount)}</Td>
                     <Td right>
@@ -141,7 +149,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                         <Button size="sm" variant="secondary" onClick={() => setSend({ kind: "payment", payment: p })} title="Send">
                           <Send size={14} /> Send
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setErr(""); setForm(p); }} aria-label="Edit">
+                        <Button size="sm" variant="ghost" onClick={() => { setErr(""); setOtherService(!!p.service && ![planLabel, ...c.services, ...db.settings.services].includes(p.service)); setForm(p); }} aria-label="Edit">
                           <Pencil size={14} />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => del(p)} aria-label="Delete">
@@ -166,6 +174,28 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             <Field label="Amount (₹)">
               <Input type="number" min={1} value={form.amount || ""} onChange={(e) => { setErr(""); setForm({ ...form, amount: Number(e.target.value) }); }} autoFocus />
             </Field>
+            <Field label="Payment for (service)" full>
+              <select
+                value={otherService ? "__other" : form.service ?? ""}
+                onChange={(e) => {
+                  if (e.target.value === "__other") { setOtherService(true); setForm({ ...form, service: "" }); }
+                  else { setOtherService(false); setForm({ ...form, service: e.target.value }); }
+                }}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              >
+                <option value="">Select service</option>
+                {planLabel && <optgroup label="Client's plan"><option value={planLabel}>{planLabel}</option></optgroup>}
+                {c.services.length > 0 && <optgroup label="Client's services">{c.services.map((s) => <option key={s} value={s}>{s}</option>)}</optgroup>}
+                {otherServices.length > 0 && <optgroup label="Other services">{otherServices.map((s) => <option key={s} value={s}>{s}</option>)}</optgroup>}
+                {form.service && !knownServices.includes(form.service) && !otherService && <option value={form.service}>{form.service}</option>}
+                <optgroup label="Custom"><option value="__other">Other (type it)</option></optgroup>
+              </select>
+            </Field>
+            {otherService && (
+              <Field label="Service name" full>
+                <Input value={form.service ?? ""} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="e.g. Setup fee, Logo design, Extra reels" autoFocus />
+              </Field>
+            )}
             <Field label="Payment mode">
               <Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as PayMode })} options={PAY_MODES} />
             </Field>
@@ -174,7 +204,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             </Field>
             {!form.id && (
               <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 sm:col-span-2">
-                Invoice number will be: <b>{nextInvoice}</b> · {decided ? `Currently due: ${inr(bal)}` : "Plan not decided, this will be recorded as an advance"}
+                Invoice number will be: <b>{nextInvoice}</b> · {decided ? `Currently due: ${inr(Math.max(0, bal))}` : "Plan not decided, this will be recorded as an advance"}
                 {decided && form.amount > bal && bal > 0 && <span className="ml-1 text-amber-600">(more than the amount due)</span>}
               </p>
             )}
