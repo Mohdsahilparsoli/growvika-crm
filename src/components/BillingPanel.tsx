@@ -72,7 +72,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         <div>
           <p className="font-medium text-slate-900">{c.business} · Billing</p>
           <p className="text-xs text-slate-500">
-            {pays.length} payments · {c.gstApplicable ? `GST invoice (${db.settings.gstRate}%)` : "No GST"}
+            {pays.length} payments · {c.gstApplicable && db.company.gst ? `GST invoice (${db.settings.gstRate}%)` : "Invoice without GST"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -7,6 +7,7 @@ export const DEFAULT_COMPANY: Company = {
   phone: "",
   email: "",
   gst: "",
+  udyam: "",
 };
 
 export const DEFAULT_SETTINGS: Settings = {

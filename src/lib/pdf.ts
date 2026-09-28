@@ -56,7 +56,7 @@ async function header(doc: jsPDF, db: DB, title: string) {
   doc.setFontSize(9);
   doc.setTextColor(203, 213, 225);
   doc.text(db.company.tagline, 14, 23);
-  doc.text(`${db.company.phone}  |  ${db.company.email}`, 14, 29);
+  doc.text([db.company.phone, db.company.email].filter(Boolean).join("  |  "), 14, 29);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
@@ -65,7 +65,8 @@ async function header(doc: jsPDF, db: DB, title: string) {
   doc.setFontSize(8.5);
   doc.setTextColor(203, 213, 225);
   doc.text(db.company.address, W - 14, 23, { align: "right" });
-  if (db.company.gst) doc.text(`GSTIN: ${db.company.gst}`, W - 14, 29, { align: "right" });
+  const ids = [db.company.udyam ? `Udyam Reg. No: ${db.company.udyam}` : "", db.company.gst ? `GSTIN: ${db.company.gst}` : ""].filter(Boolean);
+  if (ids.length) doc.text(ids.join("  |  "), W - 14, 29, { align: "right" });
   doc.setTextColor(...DARK);
 }
 
@@ -79,11 +80,9 @@ function billTo(doc: jsPDF, c: Client, y: number) {
   doc.text(c.business, 14, y + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  const lines = [
-    c.name,
-    `${c.address}, ${c.city}, ${c.state}`,
-    `Phone: ${c.phone}${c.email ? "  |  " + c.email : ""}`,
-  ];
+  const addr = [c.address, c.city, c.state].filter(Boolean).join(", ");
+  const contact = [c.phone ? `Phone: ${c.phone}` : "", c.email].filter(Boolean).join("  |  ");
+  const lines = [c.name, addr, contact].filter(Boolean);
   if (c.gst) lines.push(`GSTIN: ${c.gst}`);
   lines.forEach((l, i) => doc.text(l, 14, y + 12 + i * 5));
   return y + 12 + lines.length * 5;
@@ -104,7 +103,8 @@ export async function paymentInvoicePDF(db: DB, p: Payment) {
   const c = db.clients.find((x) => x.id === p.clientId)!;
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
-  await header(doc, db, c.gstApplicable ? "TAX INVOICE" : "INVOICE");
+  const withGst = c.gstApplicable && !!db.company.gst;
+  await header(doc, db, withGst ? "TAX INVOICE" : "INVOICE");
 
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
@@ -122,7 +122,7 @@ export async function paymentInvoicePDF(db: DB, p: Payment) {
 
   const desc = `${c.services.join(", ")} services${p.note ? " - " + p.note : ""}`;
   const body: (string | { content: string; styles: object })[][] = [];
-  if (c.gstApplicable) {
+  if (withGst) {
     const rate = db.settings.gstRate || 0;
     const taxable = p.amount / (1 + rate / 100);
     const half = (p.amount - taxable) / 2;

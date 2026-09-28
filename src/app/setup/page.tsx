@@ -11,7 +11,7 @@ export default function SetupPage() {
   const { refresh } = useStore();
   const router = useRouter();
   const [checking, setChecking] = useState(true);
-  const [f, setF] = useState({ name: "", email: "", password: "", confirm: "", company: "GrowVika", phone: "", companyEmail: "", address: "", gst: "" });
+  const [f, setF] = useState({ name: "", email: "", password: "", confirm: "", company: "GrowVika", phone: "", companyEmail: "", address: "", gst: "", udyam: "" });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -44,7 +44,7 @@ export default function SetupPage() {
         name: f.name,
         email: f.email,
         password: f.password,
-        company: { name: f.company, phone: f.phone, email: f.companyEmail, address: f.address, gst: f.gst, tagline: "Digital Growth Partner" },
+        company: { name: f.company, phone: f.phone, email: f.companyEmail, address: f.address, gst: f.gst, udyam: f.udyam, tagline: "Digital Growth Partner" },
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -71,8 +71,9 @@ export default function SetupPage() {
         <Input placeholder="Company name" value={f.company} onChange={(e) => set("company", e.target.value)} />
         <div className="grid grid-cols-2 gap-3">
           <Input placeholder="Phone" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
-          <Input placeholder="GSTIN (optional)" value={f.gst} onChange={(e) => set("gst", e.target.value.toUpperCase())} />
+          <Input placeholder="GSTIN (if registered)" value={f.gst} onChange={(e) => set("gst", e.target.value.toUpperCase())} />
         </div>
+        <Input placeholder="Udyam registration no. (optional)" value={f.udyam} onChange={(e) => set("udyam", e.target.value.toUpperCase())} />
         <Input type="email" placeholder="Company email" value={f.companyEmail} onChange={(e) => set("companyEmail", e.target.value)} />
         <Input placeholder="Address" value={f.address} onChange={(e) => set("address", e.target.value)} />
         {err && <p className="text-sm text-red-600">{err}</p>}

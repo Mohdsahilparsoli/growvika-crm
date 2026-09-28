@@ -22,6 +22,7 @@ export async function PUT(req: Request) {
         phone: String(c.phone ?? "").slice(0, 50),
         email: String(c.email ?? "").slice(0, 200),
         gst: String(c.gst ?? "").toUpperCase().slice(0, 20),
+        udyam: String(c.udyam ?? "").toUpperCase().trim().slice(0, 40),
       });
     }
     if (b.settings) {

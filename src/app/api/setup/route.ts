@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       phone: String(company.phone ?? "").slice(0, 50),
       email: String(company.email ?? "").slice(0, 200),
       gst: String(company.gst ?? "").toUpperCase().slice(0, 20),
+      udyam: String(company.udyam ?? "").toUpperCase().trim().slice(0, 40),
     });
     await createSession(id);
     return json({ ok: true });

@@ -116,10 +116,10 @@ export default function ClientForm({
               options={db.users.filter((u) => u.active).map((u) => ({ value: u.id, label: u.name }))}
             />
           </Field>
-          <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
+          {db.company.gst && <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
             <input type="checkbox" checked={c.gstApplicable} onChange={(e) => set("gstApplicable", e.target.checked)} className="h-4 w-4 accent-brand-500" />
             Add GST ({db.settings.gstRate}%) to invoices
-          </label>
+          </label>}
         </>
       )}
       <Field label="Notes" full>

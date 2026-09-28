@@ -97,6 +97,7 @@ export interface Company {
   phone: string;
   email: string;
   gst: string;
+  udyam?: string;
 }
 
 export interface Settings {

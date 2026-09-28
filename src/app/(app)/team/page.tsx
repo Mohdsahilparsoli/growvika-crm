@@ -153,7 +153,9 @@ export default function TeamPage() {
             <Field label="Address" full><Input value={co.address} onChange={(e) => setCo({ ...co, address: e.target.value })} /></Field>
             <Field label="Phone"><Input value={co.phone} onChange={(e) => setCo({ ...co, phone: e.target.value })} /></Field>
             <Field label="Email"><Input value={co.email} onChange={(e) => setCo({ ...co, email: e.target.value })} /></Field>
-            <Field label="GSTIN (leave blank if not GST registered)" full><Input value={co.gst} onChange={(e) => setCo({ ...co, gst: e.target.value.toUpperCase() })} /></Field>
+            <Field label="Udyam registration no."><Input value={co.udyam ?? ""} onChange={(e) => setCo({ ...co, udyam: e.target.value.toUpperCase() })} placeholder="UDYAM-XX-00-0000000" /></Field>
+            <Field label="GSTIN (leave blank if not registered)"><Input value={co.gst} onChange={(e) => setCo({ ...co, gst: e.target.value.toUpperCase() })} /></Field>
+            {!co.gst && <p className="text-xs text-slate-500 sm:col-span-2">No GSTIN, so invoices are issued without GST. Add your GSTIN here once you register and GST options will turn on.</p>}
             <div className="flex items-center justify-end gap-3 sm:col-span-2">
               {saved === "company" && <span className="text-sm text-brand-600">Saved ✓</span>}
               <Button type="submit">Save company details</Button>
