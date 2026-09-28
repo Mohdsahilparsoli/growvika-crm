@@ -1,0 +1,152 @@
+export type Role = "admin" | "employee";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+  active: boolean;
+}
+
+export type ClientStatus = "Active" | "Inactive" | "VIP";
+
+export interface Client {
+  id: string;
+  name: string;
+  business: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  address: string;
+  city: string;
+  state: string;
+  gst: string;
+  services: string[];
+  status: ClientStatus;
+  joinedAt: string;
+  notes: string;
+  assignedTo: string;
+  totalBilling: number;
+  gstApplicable: boolean;
+}
+
+export type PayMode = "UPI" | "Bank Transfer" | "Cash" | "Cheque";
+
+export interface Payment {
+  id: string;
+  clientId: string;
+  date: string;
+  amount: number;
+  mode: PayMode;
+  invoiceNo: string;
+  note: string;
+}
+
+export type LeadStage =
+  | "New Lead"
+  | "Contacted"
+  | "Meeting Done"
+  | "Proposal Sent"
+  | "Won"
+  | "Lost";
+
+export interface Lead {
+  id: string;
+  name: string;
+  business: string;
+  phone: string;
+  source: string;
+  service: string;
+  stage: LeadStage;
+  followUp: string;
+  assignedTo: string;
+  note: string;
+  lostReason: string;
+  createdAt: string;
+}
+
+export type CommType = "Call" | "WhatsApp" | "Meeting" | "Email";
+
+export interface Comm {
+  id: string;
+  clientId: string;
+  date: string;
+  type: CommType;
+  summary: string;
+  by: string;
+  nextAction: string;
+  fileName: string;
+}
+
+export interface Expense {
+  id: string;
+  date: string;
+  amount: number;
+  where: string;
+  why: string;
+  category: string;
+  mode: PayMode;
+  note: string;
+}
+
+export interface Company {
+  name: string;
+  tagline: string;
+  address: string;
+  phone: string;
+  email: string;
+  gst: string;
+}
+
+export interface DB {
+  company: Company;
+  users: User[];
+  clients: Client[];
+  payments: Payment[];
+  leads: Lead[];
+  comms: Comm[];
+  expenses: Expense[];
+  invoiceCounter: number;
+}
+
+export const SERVICES = [
+  "SEO",
+  "Social Media",
+  "Meta Ads",
+  "Google Ads",
+  "Website",
+  "Branding",
+  "Content",
+];
+
+export const LEAD_STAGES: LeadStage[] = [
+  "New Lead",
+  "Contacted",
+  "Meeting Done",
+  "Proposal Sent",
+  "Won",
+  "Lost",
+];
+
+export const LEAD_SOURCES = [
+  "Instagram",
+  "Facebook",
+  "Referral",
+  "Website",
+  "Call",
+  "Google",
+];
+
+export const EXPENSE_CATEGORIES = [
+  "Ads",
+  "Tools / Software",
+  "Salary / Freelancer",
+  "Office",
+  "Travel",
+  "Equipment",
+  "Other",
+];
+
+export const PAY_MODES: PayMode[] = ["UPI", "Bank Transfer", "Cash", "Cheque"];
+export const COMM_TYPES: CommType[] = ["Call", "WhatsApp", "Meeting", "Email"];

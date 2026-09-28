@@ -1,0 +1,135 @@
+"use client";
+
+import { useState } from "react";
+import { Client, ClientStatus, SERVICES } from "@/lib/types";
+import { useStore } from "@/lib/store";
+import { Button, Field, Input, Select, Textarea } from "./ui";
+import { todayISO } from "@/lib/format";
+
+export const emptyClient = (assignedTo: string): Client => ({
+  id: "",
+  name: "",
+  business: "",
+  phone: "",
+  whatsapp: "",
+  email: "",
+  address: "",
+  city: "",
+  state: "Uttarakhand",
+  gst: "",
+  services: [],
+  status: "Active",
+  joinedAt: todayISO(),
+  notes: "",
+  assignedTo,
+  totalBilling: 0,
+  gstApplicable: false,
+});
+
+export default function ClientForm({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: Client;
+  onSave: (c: Client) => void;
+  onCancel: () => void;
+}) {
+  const { db, isAdmin } = useStore();
+  const [c, setC] = useState<Client>(initial);
+  const [err, setErr] = useState("");
+  const set = <K extends keyof Client>(k: K, v: Client[K]) => {
+    setC((p) => ({ ...p, [k]: v }));
+    setErr("");
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!c.name.trim() || !c.business.trim()) return setErr("Client ka naam aur business ka naam zaroori hai");
+    if (!/^\d{10}$/.test(c.phone.replace(/\D/g, ""))) return setErr("Sahi 10 digit phone number daalein");
+    onSave({ ...c, whatsapp: c.whatsapp || c.phone });
+  };
+
+  return (
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <Field label="Client ka naam *">
+        <Input value={c.name} onChange={(e) => set("name", e.target.value)} />
+      </Field>
+      <Field label="Business ka naam *">
+        <Input value={c.business} onChange={(e) => set("business", e.target.value)} />
+      </Field>
+      <Field label="Phone *">
+        <Input value={c.phone} onChange={(e) => set("phone", e.target.value)} inputMode="numeric" />
+      </Field>
+      <Field label="WhatsApp (khali chhodein to phone wala)">
+        <Input value={c.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} inputMode="numeric" />
+      </Field>
+      <Field label="Email">
+        <Input type="email" value={c.email} onChange={(e) => set("email", e.target.value)} />
+      </Field>
+      <Field label="GST number">
+        <Input value={c.gst} onChange={(e) => set("gst", e.target.value.toUpperCase())} />
+      </Field>
+      <Field label="Address" full>
+        <Input value={c.address} onChange={(e) => set("address", e.target.value)} />
+      </Field>
+      <Field label="City">
+        <Input value={c.city} onChange={(e) => set("city", e.target.value)} />
+      </Field>
+      <Field label="State">
+        <Input value={c.state} onChange={(e) => set("state", e.target.value)} />
+      </Field>
+      <Field label="Services" full>
+        <div className="flex flex-wrap gap-2">
+          {SERVICES.map((s) => {
+            const on = c.services.includes(s);
+            return (
+              <button
+                type="button"
+                key={s}
+                onClick={() => set("services", on ? c.services.filter((x) => x !== s) : [...c.services, s])}
+                className={`rounded-full border px-3 py-1 text-xs ${
+                  on ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {s}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+      <Field label="Status">
+        <Select value={c.status} onChange={(e) => set("status", e.target.value as ClientStatus)} options={["Active", "VIP", "Inactive"]} />
+      </Field>
+      <Field label="Joining date">
+        <Input type="date" value={c.joinedAt} onChange={(e) => set("joinedAt", e.target.value)} />
+      </Field>
+      {isAdmin && (
+        <>
+          <Field label="Total billing / package amount (₹)">
+            <Input type="number" min={0} value={c.totalBilling || ""} onChange={(e) => set("totalBilling", Number(e.target.value))} />
+          </Field>
+          <Field label="Kis team member ko diya">
+            <Select
+              value={c.assignedTo}
+              onChange={(e) => set("assignedTo", e.target.value)}
+              options={db.users.filter((u) => u.active).map((u) => ({ value: u.id, label: u.name }))}
+            />
+          </Field>
+          <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
+            <input type="checkbox" checked={c.gstApplicable} onChange={(e) => set("gstApplicable", e.target.checked)} className="h-4 w-4 accent-emerald-600" />
+            Invoice mein GST (18%) lagana hai
+          </label>
+        </>
+      )}
+      <Field label="Notes" full>
+        <Textarea value={c.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Jaise: sirf shaam ko call karna" />
+      </Field>
+      {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
+      <div className="flex justify-end gap-2 sm:col-span-2">
+        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit">Save</Button>
+      </div>
+    </form>
+  );
+}
