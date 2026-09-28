@@ -100,3 +100,13 @@ export function planCategoriesForService(service: string, allCategories: string[
     return c === key || c.startsWith(key + " ") || c.includes(`(${key})`);
   });
 }
+
+// Show Indian numbers as +91-XXXXXXXXXX
+export const formatPhone = (phone: string) => {
+  const raw = (phone ?? "").trim();
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) return `+91-${digits}`;
+  if (digits.length === 12 && digits.startsWith("91")) return `+91-${digits.slice(2)}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `+91-${digits.slice(1)}`;
+  return raw;
+};

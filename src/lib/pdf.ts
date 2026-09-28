@@ -3,7 +3,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Client, DB, Expense, Payment } from "./types";
-import { fmtDate, pdfInr, planDecided } from "./format";
+import { fmtDate, formatPhone, pdfInr, planDecided } from "./format";
 
 const BRAND: [number, number, number] = [61, 101, 254];
 const NAVY: [number, number, number] = [3, 8, 27];
@@ -71,7 +71,7 @@ async function header(doc: jsPDF, db: DB, title: string) {
   doc.setFontSize(9);
   doc.setTextColor(203, 213, 225);
   doc.text(db.company.tagline, 14, 23);
-  doc.text([db.company.phone, db.company.email].filter(Boolean).join("  |  "), 14, 29);
+  doc.text([formatPhone(db.company.phone), db.company.email].filter(Boolean).join("  |  "), 14, 29);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
