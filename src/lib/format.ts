@@ -70,3 +70,33 @@ export const mailLink = (email: string, subject: string, body: string) =>
   `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
 export const statusTone = (s: string) => (s === "VIP" ? "purple" : s === "Active" ? "green" : "gray");
+
+// Which plan categories belong to which service (used in the payment form)
+const SERVICE_PLAN_MAP: Record<string, string[]> = {
+  seo: ["Website SEO"],
+  "website seo": ["Website SEO"],
+  gmb: ["Local SEO (GMB)"],
+  "local seo": ["Local SEO (GMB)"],
+  "social media": ["Social Media"],
+  "meta ads": ["Ads Management"],
+  "google ads": ["Ads Management"],
+  ads: ["Ads Management"],
+  "ads management": ["Ads Management"],
+  website: ["Website", "Website Care & Hosting"],
+  "app development": ["App Development"],
+  "custom development": ["Custom WordPress", "PHP Laravel", "Next.js / React", "Development Care"],
+  "crm development": ["CRM – PHP Laravel", "CRM – Next.js + Node.js", "CRM Care"],
+  crm: ["CRM – PHP Laravel", "CRM – Next.js + Node.js", "CRM Care"],
+};
+
+export function planCategoriesForService(service: string, allCategories: string[]): string[] {
+  const key = service.trim().toLowerCase();
+  if (!key) return [];
+  const mapped = SERVICE_PLAN_MAP[key];
+  if (mapped) return allCategories.filter((cat) => mapped.includes(cat));
+  // Services you add yourself: match plan categories with the same name
+  return allCategories.filter((cat) => {
+    const c = cat.toLowerCase();
+    return c === key || c.startsWith(key + " ") || c.includes(`(${key})`);
+  });
+}

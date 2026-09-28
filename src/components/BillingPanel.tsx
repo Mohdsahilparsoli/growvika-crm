@@ -5,7 +5,7 @@ import { Download, FileText, Pencil, Plus, Send, Trash2, MessageCircle } from "l
 import { useStore, uid } from "@/lib/store";
 import { PAY_MODES, Payment, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, StatCard, Td, Th } from "./ui";
-import { fmtDate, inr, planDecided, todayISO, waLink } from "@/lib/format";
+import { fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
 import EmailSender from "./EmailSender";
 
 const NO_PLAN = "No plan decided";
@@ -36,14 +36,13 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
     if (p) setSend({ kind: "payment", payment: p });
   }, [justAdded, saving, db.payments]);
 
-  const planLabel = decided && c.plan ? `${c.planCategory ? `${c.planCategory}: ` : ""}${c.plan}` : "";
   const allServices = Array.from(new Set([...db.settings.services, ...c.services]));
   const planCategories = Array.from(new Set(db.settings.plans.map((x) => x.category)));
   const planOptionLabel = (x: { category: string; name: string }) => `${x.category}: ${x.name}`;
 
   const openNew = () => {
     setErr("");
-    setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "", service: c.services[0] ?? "", plan: planLabel || NO_PLAN });
+    setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "", service: c.services[0] ?? "", plan: NO_PLAN });
   };
 
   const save = (e: React.FormEvent) => {
@@ -180,7 +179,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             <Field label="Service" full>
               <Select
                 value={form.service ?? ""}
-                onChange={(e) => setForm({ ...form, service: e.target.value })}
+                onChange={(e) => setForm({ ...form, service: e.target.value, plan: NO_PLAN })}
                 options={[{ value: "", label: "Select service" }, ...Array.from(new Set([...allServices, form.service ?? ""].filter(Boolean)))]}
               />
             </Field>
@@ -192,7 +191,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
               >
                 <option value={NO_PLAN}>No plan decided</option>
                 {form.plan && form.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === form.plan) && <option value={form.plan}>{form.plan}</option>}
-                {planCategories.map((cat) => (
+                {planCategoriesForService(form.service ?? "", planCategories).map((cat) => (
                   <optgroup key={cat} label={cat}>
                     {db.settings.plans.filter((x) => x.category === cat).map((x) => (
                       <option key={x.id} value={planOptionLabel(x)}>{x.category} · {x.name} — {inr(x.price)}{x.cycle ? ` / ${x.cycle}` : ""}</option>
@@ -200,6 +199,9 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                   </optgroup>
                 ))}
               </select>
+              {form.service && planCategoriesForService(form.service, planCategories).length === 0 && (
+                <span className="text-xs text-slate-500">No plans linked to {form.service}. Choose &quot;No plan decided&quot; or pick another service.</span>
+              )}
             </Field>
             <Field label="Payment mode">
               <Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as PayMode })} options={PAY_MODES} />
