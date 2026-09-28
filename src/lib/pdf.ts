@@ -142,7 +142,7 @@ function footer(doc: jsPDF, db: DB) {
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
   doc.text(`Thank you for choosing ${db.company.name}!`, 14, H - 13);
-  doc.text("This is a computer generated document.", W - 14, H - 13, { align: "right" });
+  doc.text("Let's grow your business together  |  www.growvika.com", W - 14, H - 13, { align: "right" });
 }
 
 export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "download") {
