@@ -7,7 +7,7 @@ import { Plus, Search } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { Badge, Button, Card, Empty, Input, Modal, PageHeader, Select } from "@/components/ui";
 import ClientForm, { emptyClient } from "@/components/ClientForm";
-import { clientPlans, clientBalance, inr, paidFor, planDecided, statusTone } from "@/lib/format";
+import { clientPlans, clientBalance, inr, paidFor, planDecided, statusTone, dueFor, pendingFor } from "@/lib/format";
 
 export default function ClientsPage() {
   const { db, user, isAdmin, update, userName } = useStore();
@@ -55,7 +55,7 @@ export default function ClientsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((c) => {
-            const bal = clientBalance(db, c.id);
+            const bal = pendingFor(db, c.id);
             return (
               <Link key={c.id} href={`/clients/${c.id}`}>
                 <Card className="h-full p-4 transition-shadow hover:shadow-md">
@@ -79,7 +79,9 @@ export default function ClientsPage() {
                   </div>
                   <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
                     <span>{userName(c.assignedTo)}</span>
-                    {!planDecided(c) ? (
+                    {isAdmin && !planDecided(c) && dueFor(db, c.id) > 0 ? (
+                      <span className="font-medium text-red-600">Bill due {inr(dueFor(db, c.id))}</span>
+                    ) : !planDecided(c) ? (
                       <span className="font-medium text-amber-600">Plan not decided{isAdmin && paidFor(db, c.id) > 0 ? ` · Advance ${inr(paidFor(db, c.id))}` : ""}</span>
                     ) : (
                       isAdmin && (bal > 0 ? <span className="font-medium text-red-600">Due {inr(bal)}</span> : <span className="font-medium text-emerald-600">Fully paid</span>)

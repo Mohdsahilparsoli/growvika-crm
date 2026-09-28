@@ -5,7 +5,7 @@ import { Download, FileText, Pencil, Plus, Send, Trash2, MessageCircle } from "l
 import { useStore, uid } from "@/lib/store";
 import { PAY_MODES, Payment, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, StatCard, Td, Th } from "./ui";
-import { planSummary, fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
+import { isPaid, planSummary, fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
 import EmailSender from "./EmailSender";
 
 const NO_PLAN = "No plan decided";
@@ -22,7 +22,9 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   const pays = db.payments
     .filter((p) => p.clientId === clientId)
     .sort((a, b) => b.date.localeCompare(a.date) || b.invoiceNo.localeCompare(a.invoiceNo));
-  const paid = pays.reduce((s, p) => s + p.amount, 0);
+  const paid = pays.filter(isPaid).reduce((s, p) => s + p.amount, 0);
+  const dueTotal = pays.filter((p) => !isPaid(p)).reduce((s, p) => s + p.amount, 0);
+  const dueCount = pays.filter((p) => !isPaid(p)).length;
   const decided = planDecided(c);
   const bal = decided ? c.totalBilling - paid : 0;
 
@@ -46,7 +48,13 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   const openNew = () => {
     setCustomPlan(false);
     setErr("");
-    setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "", service: c.services[0] ?? "", plan: NO_PLAN });
+    setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "", service: c.services[0] ?? "", plan: NO_PLAN, status: "Paid" });
+  };
+
+  const markPaid = (p: Payment) => {
+    setErr("");
+    setCustomPlan(!!p.plan && p.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === p.plan));
+    setForm({ ...p, status: "Paid", date: todayISO() });
   };
 
   const save = (e: React.FormEvent) => {
@@ -73,9 +81,11 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   };
 
   const sendMsg = (t: SendTarget) =>
-    t.kind === "payment"
+    t.kind === "payment" && !isPaid(t.payment)
+      ? `Hello ${c.name},\n\nPlease find attached invoice ${t.payment.invoiceNo} dated ${fmtDate(t.payment.date)}${t.payment.service ? ` for ${t.payment.service}` : ""}.\n\nAmount due: ${inr(t.payment.amount)}\n\nKindly make the payment at your earliest convenience.\n\nThank you,\n${db.company.name}`
+      : t.kind === "payment"
       ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)}${t.payment.service ? ` for ${t.payment.service}` : ""} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\n${decided ? `Total package: ${inr(c.totalBilling)}\nBalance due: ${inr(Math.max(0, c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0)))}` : "This has been recorded as an advance. Your plan and final amount will be confirmed soon."}\n\nThank you,\n${db.company.name}`
-      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\n${decided ? `Total billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(Math.max(0, bal))}` : `Advance received: ${inr(paid)}\nPlan and final amount: to be decided`}\n\nThank you,\n${db.company.name}`;
+      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\n${decided ? `Total billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(Math.max(0, bal, dueTotal))}` : `Advance received: ${inr(paid)}${dueTotal ? `\nAmount due: ${inr(dueTotal)}` : ""}\nPlan and final amount: to be decided`}\n\nThank you,\n${db.company.name}`;
 
   const download = (t: SendTarget) => (t.kind === "payment" ? paymentInvoicePDF(db, t.payment) : fullBillPDF(db, clientId));
 
@@ -85,7 +95,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         <div>
           <p className="font-medium text-slate-900">{c.business} · Billing</p>
           <p className="text-xs text-slate-500">
-            {pays.length} payments · {c.gstApplicable && db.company.gst ? `GST invoice (${db.settings.gstRate}%)` : "Invoice without GST"}
+            {pays.length} {pays.length === 1 ? "bill" : "bills"}{dueCount ? ` (${dueCount} due)` : ""} · {c.gstApplicable && db.company.gst ? `GST invoice (${db.settings.gstRate}%)` : "Invoice without GST"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -106,13 +116,17 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
           <>
             <StatCard label="Total billing" value={inr(c.totalBilling)} hint={planSummary(c) || undefined} />
             <StatCard label="Total received" value={inr(paid)} tone="good" />
-            <StatCard label="Balance pending" value={inr(Math.max(0, bal))} tone={bal > 0 ? "bad" : "good"} hint={bal < 0 ? `Fully paid · ${inr(-bal)} extra received` : bal === 0 ? "Fully paid" : undefined} />
+            <StatCard label="Balance pending" value={inr(Math.max(0, bal, dueTotal))} tone={Math.max(bal, dueTotal) > 0 ? "bad" : "good"} hint={dueCount ? `${dueCount} unpaid bill${dueCount > 1 ? "s" : ""} · ${inr(dueTotal)}` : bal < 0 ? `Fully paid · ${inr(-bal)} extra received` : bal === 0 ? "Fully paid" : undefined} />
           </>
         ) : (
           <>
             <StatCard label="Plan" value="Not decided" tone="warn" hint="Set the plan from Edit client" />
             <StatCard label="Advance received" value={inr(paid)} tone="good" />
-            <StatCard label="Balance pending" value="—" hint="Shows once the plan is decided" />
+            {dueTotal > 0 ? (
+              <StatCard label="Bills due" value={inr(dueTotal)} tone="bad" hint={`${dueCount} unpaid bill${dueCount > 1 ? "s" : ""}`} />
+            ) : (
+              <StatCard label="Balance pending" value="—" hint="Shows once the plan is decided" />
+            )}
           </>
         )}
       </div>
@@ -130,7 +144,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                 <tr>
                   <Th>Date</Th>
                   <Th>Invoice No.</Th>
-                  <Th>Mode</Th>
+                  <Th>Status</Th>
                   <Th>Service</Th>
                   <Th>Plan</Th>
                   <Th>Note</Th>
@@ -143,13 +157,18 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                   <tr key={p.id} className="hover:bg-slate-50/60">
                     <Td>{fmtDate(p.date)}</Td>
                     <Td className="font-mono text-xs">{p.invoiceNo}</Td>
-                    <Td><Badge tone="blue">{p.mode}</Badge></Td>
+                    <Td>{isPaid(p) ? <Badge tone="green">Paid · {p.mode}</Badge> : <Badge tone="red">Due</Badge>}</Td>
                     <Td className="text-slate-700">{p.service || "—"}</Td>
                     <Td className="text-slate-500">{p.plan || "—"}</Td>
                     <Td className="text-slate-500">{p.note || "—"}</Td>
                     <Td right className="font-semibold text-slate-900">{inr(p.amount)}</Td>
                     <Td right>
                       <div className="flex justify-end gap-1">
+                        {!isPaid(p) && (
+                          <Button size="sm" onClick={() => markPaid(p)} title="Payment received">
+                            Mark as paid
+                          </Button>
+                        )}
                         <Button size="sm" variant="secondary" onClick={() => paymentInvoicePDF(db, p)} title="Download PDF">
                           <FileText size={14} /> PDF
                         </Button>
@@ -216,22 +235,26 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                 <span className="text-xs text-slate-500">No plans linked to {form.service}. Choose &quot;No plan decided&quot; or type a custom plan.</span>
               )}
             </Field>
-            <Field label="Payment mode">
+            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 sm:col-span-2">
+              <input type="checkbox" checked={form.status === "Due"} onChange={(e) => setForm({ ...form, status: e.target.checked ? "Due" : "Paid" })} className="h-4 w-4 accent-red-500" />
+              Payment not received yet (mark as due)
+            </label>
+            {form.status !== "Due" && <Field label="Payment mode">
               <Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as PayMode })} options={PAY_MODES} />
-            </Field>
+            </Field>}
             <Field label="Note">
               <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. 2nd installment" />
             </Field>
             {!form.id && (
               <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 sm:col-span-2">
-                Invoice number will be: <b>{nextInvoice}</b> · {decided ? `Currently due: ${inr(Math.max(0, bal))}` : "Plan not decided, this will be recorded as an advance"}
-                {decided && form.amount > bal && bal > 0 && <span className="ml-1 text-amber-600">(more than the amount due)</span>}
+                Invoice number will be: <b>{nextInvoice}</b> · {form.status === "Due" ? "This bill will show as due until you mark it as paid" : decided ? `Currently due: ${inr(Math.max(0, bal))}` : "Plan not decided, this will be recorded as an advance"}
+                {form.status !== "Due" && decided && form.amount > bal && bal > 0 && <span className="ml-1 text-amber-600">(more than the amount due)</span>}
               </p>
             )}
             {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
             <div className="flex justify-end gap-2 sm:col-span-2">
               <Button type="button" variant="secondary" onClick={() => setForm(null)}>Cancel</Button>
-              <Button type="submit">Save payment</Button>
+              <Button type="submit">{form.status === "Due" ? "Save as due" : "Save payment"}</Button>
             </div>
           </form>
         )}

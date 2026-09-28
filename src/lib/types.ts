@@ -58,6 +58,7 @@ export interface Payment {
   note: string;
   service?: string;
   plan?: string;
+  status?: "Paid" | "Due";
 }
 
 export type LeadStage =

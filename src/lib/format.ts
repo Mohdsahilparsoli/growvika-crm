@@ -27,8 +27,21 @@ export const todayISO = () => {
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 };
 
+export const isPaid = (p: { status?: string }) => p.status !== "Due";
+
 export const paidFor = (db: DB, clientId: string) =>
-  db.payments.filter((p) => p.clientId === clientId).reduce((s, p) => s + p.amount, 0);
+  db.payments.filter((p) => p.clientId === clientId && isPaid(p)).reduce((s, p) => s + p.amount, 0);
+
+export const dueFor = (db: DB, clientId: string) =>
+  db.payments.filter((p) => p.clientId === clientId && !isPaid(p)).reduce((s, p) => s + p.amount, 0);
+
+// What the client still owes: the plan balance, or the unpaid bills if that is higher
+export const pendingFor = (db: DB, clientId: string) => {
+  const c = db.clients.find((x) => x.id === clientId);
+  if (!c) return 0;
+  const bal = planDecided(c) ? Math.max(0, c.totalBilling - paidFor(db, clientId)) : 0;
+  return Math.max(bal, dueFor(db, clientId));
+};
 
 export const clientBalance = (db: DB, clientId: string) => {
   const c = db.clients.find((x) => x.id === clientId);
@@ -36,7 +49,7 @@ export const clientBalance = (db: DB, clientId: string) => {
   return c.totalBilling - paidFor(db, clientId);
 };
 
-export const totalIncome = (db: DB) => db.payments.reduce((s, p) => s + p.amount, 0);
+export const totalIncome = (db: DB) => db.payments.filter(isPaid).reduce((s, p) => s + p.amount, 0);
 export const totalExpense = (db: DB) => db.expenses.reduce((s, e) => s + e.amount, 0);
 
 export type RangeKey = "all" | "this" | "last" | "year";

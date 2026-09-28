@@ -5,7 +5,7 @@ import { useState } from "react";
 import { FileText } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Badge, Button, Card, PageHeader, Select, StatCard, Td, Th, Empty } from "@/components/ui";
-import { clientBalance, fmtDate, inr, inRange, paidFor, planDecided, RANGE_LABELS, RangeKey } from "@/lib/format";
+import { clientBalance, fmtDate, inr, inRange, paidFor, planDecided, RANGE_LABELS, RangeKey, dueFor, isPaid, pendingFor } from "@/lib/format";
 import { paymentInvoicePDF } from "@/lib/pdf";
 
 export default function BillingPage() {
@@ -13,12 +13,13 @@ export default function BillingPage() {
   const [range, setRange] = useState<RangeKey>("all");
 
   const totalBilling = db.clients.reduce((s, c) => s + c.totalBilling, 0);
-  const received = db.payments.reduce((s, p) => s + p.amount, 0);
-  const pending = db.clients.reduce((s, c) => s + Math.max(0, clientBalance(db, c.id)), 0);
+  const received = db.payments.filter(isPaid).reduce((s, p) => s + p.amount, 0);
+  const pending = db.clients.reduce((s, c) => s + pendingFor(db, c.id), 0);
+  const dueCount = db.payments.filter((p) => !isPaid(p)).length;
   const recent = db.payments
     .filter((p) => inRange(p.date, range))
     .sort((a, b) => b.date.localeCompare(a.date) || b.invoiceNo.localeCompare(a.invoiceNo));
-  const rangeTotal = recent.reduce((s, p) => s + p.amount, 0);
+  const rangeTotal = recent.filter(isPaid).reduce((s, p) => s + p.amount, 0);
 
   return (
     <div>
@@ -26,8 +27,8 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Total billing" value={inr(totalBilling)} hint={`${db.clients.length} clients`} />
-        <StatCard label="Total received" value={inr(received)} tone="good" hint={`${db.payments.length} payments`} />
-        <StatCard label="Total pending" value={inr(pending)} tone="bad" />
+        <StatCard label="Total received" value={inr(received)} tone="good" hint={`${db.payments.length - dueCount} payments`} />
+        <StatCard label="Total pending" value={inr(pending)} tone="bad" hint={dueCount ? `${dueCount} unpaid bills` : undefined} />
       </div>
 
       <Card className="mt-6 overflow-hidden">
@@ -43,7 +44,8 @@ export default function BillingPage() {
               {db.clients.map((c) => {
                 const paid = paidFor(db, c.id);
                 const decided = planDecided(c);
-                const bal = decided ? c.totalBilling - paid : 0;
+                const due = dueFor(db, c.id);
+                const bal = Math.max(decided ? c.totalBilling - paid : 0, due);
                 const pct = decided && c.totalBilling ? Math.min(100, (paid / c.totalBilling) * 100) : 0;
                 return (
                   <tr key={c.id} className="hover:bg-slate-50/60">
@@ -55,8 +57,8 @@ export default function BillingPage() {
                     </Td>
                     <Td right>{decided ? inr(c.totalBilling) : <span className="text-amber-600">Not decided</span>}</Td>
                     <Td right className="text-emerald-600">{inr(paid)}</Td>
-                    <Td right className={bal > 0 ? "font-medium text-red-600" : "text-slate-400"}>{decided ? inr(Math.max(0, bal)) : "—"}</Td>
-                    <Td right>{!decided ? <Badge tone="amber">{paid > 0 ? "Advance" : "Plan pending"}</Badge> : bal <= 0 ? <Badge tone="green">Paid</Badge> : paid > 0 ? <Badge tone="amber">Partial</Badge> : <Badge tone="red">Pending</Badge>}</Td>
+                    <Td right className={bal > 0 ? "font-medium text-red-600" : "text-slate-400"}>{decided || due ? inr(Math.max(0, bal)) : "—"}</Td>
+                    <Td right>{due > 0 ? <Badge tone="red">Bill due</Badge> : !decided ? <Badge tone="amber">{paid > 0 ? "Advance" : "Plan pending"}</Badge> : bal <= 0 ? <Badge tone="green">Paid</Badge> : paid > 0 ? <Badge tone="amber">Partial</Badge> : <Badge tone="red">Pending</Badge>}</Td>
                   </tr>
                 );
               })}
@@ -88,7 +90,7 @@ export default function BillingPage() {
                       <Td className="font-mono text-xs">{p.invoiceNo}</Td>
                       <Td>{c?.business ?? "—"}</Td>
                       <Td className="text-slate-500">{[p.service, p.plan].filter(Boolean).join(" · ") || "—"}</Td>
-                      <Td><Badge tone="blue">{p.mode}</Badge></Td>
+                      <Td>{isPaid(p) ? <Badge tone="blue">{p.mode}</Badge> : <Badge tone="red">Due</Badge>}</Td>
                       <Td right className="font-semibold text-slate-900">{inr(p.amount)}</Td>
                       <Td right>{c && <Button size="sm" variant="secondary" onClick={() => paymentInvoicePDF(db, p)}><FileText size={14} /> PDF</Button>}</Td>
                     </tr>

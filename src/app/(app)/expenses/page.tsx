@@ -6,7 +6,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useStore, uid } from "@/lib/store";
 import { Expense, PAY_MODES, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Select, StatCard, Td, Textarea, Th } from "@/components/ui";
-import { fmtDate, inr, inRange, RANGE_LABELS, RangeKey, todayISO, totalExpense, totalIncome } from "@/lib/format";
+import { fmtDate, inr, inRange, RANGE_LABELS, RangeKey, todayISO, totalExpense, totalIncome, isPaid } from "@/lib/format";
 import { expenseReportPDF } from "@/lib/pdf";
 
 const COLORS = ["#059669", "#0ea5e9", "#8b5cf6", "#f59e0b", "#ef4444", "#64748b", "#ec4899"];
@@ -20,7 +20,7 @@ export default function ExpensesPage() {
   const [err, setErr] = useState("");
 
   const inPeriod = db.expenses.filter((e) => inRange(e.date, range));
-  const income = db.payments.filter((p) => inRange(p.date, range)).reduce((s, p) => s + p.amount, 0);
+  const income = db.payments.filter((p) => isPaid(p) && inRange(p.date, range)).reduce((s, p) => s + p.amount, 0);
   const spent = inPeriod.reduce((s, e) => s + e.amount, 0);
   const list = inPeriod
     .filter((e) => cat === "All" || e.category === cat)

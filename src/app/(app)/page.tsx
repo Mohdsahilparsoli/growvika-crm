@@ -5,7 +5,7 @@ import { Users, TrendingUp, Clock, Wallet, Target, PhoneCall } from "lucide-reac
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useStore } from "@/lib/store";
 import { Badge, Card, PageHeader, StatCard, Empty } from "@/components/ui";
-import { formatPhone, telLink, paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
+import { isPaid, pendingFor, formatPhone, telLink, paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
 
 export default function Dashboard() {
   const { db, user, isAdmin, userName } = useStore();
@@ -22,11 +22,11 @@ export default function Dashboard() {
     .sort((a, b) => a.followUp.localeCompare(b.followUp))
     .slice(0, 4);
 
-  const monthIncome = db.payments.filter((p) => inRange(p.date, "this")).reduce((s, p) => s + p.amount, 0);
+  const monthIncome = db.payments.filter((p) => isPaid(p) && inRange(p.date, "this")).reduce((s, p) => s + p.amount, 0);
   const monthExpense = db.expenses.filter((e) => inRange(e.date, "this")).reduce((s, e) => s + e.amount, 0);
   const undecided = db.clients.filter((c) => !planDecided(c) && c.status !== "Inactive");
   const pending = db.clients
-    .map((c) => ({ c, bal: clientBalance(db, c.id) }))
+    .map((c) => ({ c, bal: pendingFor(db, c.id) }))
     .filter((x) => x.bal > 0)
     .sort((a, b) => b.bal - a.bal);
   const pendingTotal = pending.reduce((s, x) => s + x.bal, 0);
@@ -40,7 +40,7 @@ export default function Dashboard() {
   }
   const chart = months.map((m) => ({
     month: monthLabel(m),
-    Income: db.payments.filter((p) => p.date.startsWith(m)).reduce((s, p) => s + p.amount, 0),
+    Income: db.payments.filter((p) => isPaid(p) && p.date.startsWith(m)).reduce((s, p) => s + p.amount, 0),
     Expenses: db.expenses.filter((e) => e.date.startsWith(m)).reduce((s, e) => s + e.amount, 0),
   }));
 

@@ -3,7 +3,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Client, DB, Expense, Payment } from "./types";
-import { fmtDate, formatPhone, pdfInr, planDecided, planSummary } from "./format";
+import { fmtDate, formatPhone, isPaid, pdfInr, planDecided, planSummary } from "./format";
 
 const BRAND: [number, number, number] = [61, 101, 254];
 const NAVY: [number, number, number] = [3, 8, 27];
@@ -212,7 +212,8 @@ export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "do
     .filter((x) => x.clientId === c.id)
     .sort((a, b) => a.date.localeCompare(b.date) || a.invoiceNo.localeCompare(b.invoiceNo));
   const idx = all.findIndex((x) => x.id === p.id);
-  const paidTill = all.slice(0, idx + 1).reduce((s, x) => s + x.amount, 0);
+  const paidTill = all.slice(0, idx + 1).filter(isPaid).reduce((s, x) => s + x.amount, 0);
+  const isDue = !isPaid(p);
 
   let ty = lastY(doc) + 12;
   doc.setFont("helvetica", "bold");
@@ -225,12 +226,12 @@ export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "do
       ...(decided
         ? [
             ["Total Billing (Package)", pdfInr(c.totalBilling)],
-            ["Received till this payment", pdfInr(paidTill)],
+            [isDue ? "Received till date" : "Received till this payment", pdfInr(paidTill)],
             ["Balance Pending", pdfInr(Math.max(0, c.totalBilling - paidTill))],
           ]
         : [
             ["Plan", "To be decided"],
-            ["Advance received till this payment", pdfInr(paidTill)],
+            [isDue ? "Advance received till date" : "Advance received till this payment", pdfInr(paidTill)],
           ]),
     ],
     theme: "plain",
@@ -240,12 +241,14 @@ export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "do
   });
 
   ty = lastY(doc) + 10;
-  doc.setFillColor(238, 242, 255);
+  if (isDue) doc.setFillColor(254, 242, 242);
+  else doc.setFillColor(238, 242, 255);
   doc.roundedRect(14, ty, W - 28, 14, 2, 2, "F");
-  doc.setTextColor(...BRAND);
+  if (isDue) doc.setTextColor(220, 38, 38);
+  else doc.setTextColor(...BRAND);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text(`PAYMENT RECEIVED: ${pdfInr(p.amount)} via ${p.mode} on ${fmtDate(p.date)}`, W / 2, ty + 9, {
+  doc.text(isDue ? `PAYMENT DUE: ${pdfInr(p.amount)}  |  Please pay at the earliest` : `PAYMENT RECEIVED: ${pdfInr(p.amount)} via ${p.mode} on ${fmtDate(p.date)}`, W / 2, ty + 9, {
     align: "center",
   });
   doc.setTextColor(...DARK);
@@ -274,15 +277,16 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
   const pays = db.payments
     .filter((x) => x.clientId === c.id)
     .sort((a, b) => a.date.localeCompare(b.date) || a.invoiceNo.localeCompare(b.invoiceNo));
-  const paid = pays.reduce((s, p) => s + p.amount, 0);
+  const paid = pays.filter(isPaid).reduce((s, p) => s + p.amount, 0);
+  const due = pays.filter((p) => !isPaid(p)).reduce((s, p) => s + p.amount, 0);
   const decided = planDecided(c);
-  const bal = decided ? c.totalBilling - paid : 0;
+  const bal = Math.max(decided ? c.totalBilling - paid : 0, due);
 
   const boxW = (W - 28 - 8) / 3;
   const boxes: [string, string, [number, number, number]][] = [
     decided ? ["TOTAL BILLING", pdfInr(c.totalBilling), DARK] : ["PLAN", "To be decided", DARK],
     [decided ? "TOTAL RECEIVED" : "ADVANCE RECEIVED", pdfInr(paid), GREEN],
-    decided ? ["BALANCE PENDING", pdfInr(Math.max(0, bal)), bal > 0 ? [220, 38, 38] : GREEN] : ["BALANCE PENDING", "-", DARK],
+    decided || due ? ["BALANCE PENDING", pdfInr(Math.max(0, bal)), bal > 0 ? [220, 38, 38] : GREEN] : ["BALANCE PENDING", "-", DARK],
   ];
   boxes.forEach(([label, val, col], i) => {
     const x = 14 + i * (boxW + 4);
@@ -303,12 +307,15 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
   let running = 0;
   autoTable(doc, {
     startY: y + 30,
-    head: [["#", "Date", "Invoice No.", "For", "Mode", "Amount", "Total Paid"]],
+    head: [["#", "Date", "Invoice No.", "For", "Status", "Amount", "Total Paid"]],
     body: pays.map((p, i) => {
-      running += p.amount;
-      return [String(i + 1), fmtDate(p.date), p.invoiceNo, [p.service, p.plan, p.note].filter(Boolean).join(" - ") || "-", p.mode, pdfInr(p.amount), pdfInr(running)];
+      if (isPaid(p)) running += p.amount;
+      return [String(i + 1), fmtDate(p.date), p.invoiceNo, [p.service, p.plan, p.note].filter(Boolean).join(" - ") || "-", isPaid(p) ? `Paid (${p.mode})` : "DUE", pdfInr(p.amount), pdfInr(running)];
     }),
-    foot: [["", "", "", "", "Total Received", pdfInr(paid), ""]],
+    foot: [
+      ["", "", "", "", "Total Received", pdfInr(paid), ""],
+      ...(due ? [["", "", "", "", "Bills Due", pdfInr(due), ""]] : []),
+    ],
     theme: "grid",
     headStyles: { fillColor: BRAND },
     footStyles: { fillColor: [241, 245, 249], textColor: DARK },
