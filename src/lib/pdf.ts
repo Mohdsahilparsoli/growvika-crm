@@ -103,6 +103,37 @@ function billTo(doc: jsPDF, c: Client, y: number) {
   return y + 12 + lines.length * 5;
 }
 
+function signature(doc: jsPDF, db: DB) {
+  const sig = db.company.signature;
+  if (!sig) return;
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const boxW = 60;
+  const x = W - 14 - boxW;
+  const bottom = H - 28;
+  try {
+    const props = doc.getImageProperties(sig);
+    const maxW = 45;
+    const maxH = 18;
+    const scale = Math.min(maxW / props.width, maxH / props.height);
+    const w = props.width * scale;
+    const h = props.height * scale;
+    doc.addImage(sig, sig.startsWith("data:image/png") ? "PNG" : "JPEG", x + (boxW - w) / 2, bottom - 12 - h, w, h, "gv-signature", "FAST");
+  } catch {
+    return;
+  }
+  doc.setDrawColor(148, 163, 184);
+  doc.line(x, bottom - 10, x + boxW, bottom - 10);
+  doc.setFontSize(8.5);
+  doc.setTextColor(...DARK);
+  doc.setFont("helvetica", "bold");
+  doc.text("Authorised Signatory", x + boxW / 2, bottom - 5, { align: "center" });
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...MUTED);
+  doc.text(`For ${db.company.name}`, x + boxW / 2, bottom - 1, { align: "center" });
+  doc.setTextColor(...DARK);
+}
+
 function footer(doc: jsPDF, db: DB) {
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -219,6 +250,7 @@ export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "do
   });
   doc.setTextColor(...DARK);
 
+  signature(doc, db);
   footer(doc, db);
   return finish(doc, `${p.invoiceNo}-${c.business.replace(/\s+/g, "-")}.pdf`, output);
 }
@@ -289,6 +321,7 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
   doc.text(`Plan: ${decided ? [c.plan, c.billingCycle].filter(Boolean).join(" / ") || "-" : "To be decided"}   |   Services: ${c.services.join(", ") || "-"}`, 14, ty);
   doc.text(`Total payments: ${pays.length}`, 14, ty + 5);
 
+  signature(doc, db);
   footer(doc, db);
   return finish(doc, `Full-Bill-${c.business.replace(/\s+/g, "-")}.pdf`, output);
 }

@@ -106,6 +106,7 @@ export interface Company {
   email: string;
   gst: string;
   udyam?: string;
+  signature?: string;
 }
 
 export interface PlanOption {

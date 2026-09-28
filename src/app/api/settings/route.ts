@@ -15,6 +15,10 @@ export async function PUT(req: Request) {
     const b = await req.json();
     if (b.company) {
       const c = b.company;
+      const cur = await getSetting<{ signature?: string }>("company", {});
+      const sig = typeof c.signature === "string" ? c.signature : cur.signature ?? "";
+      const validSig = sig === "" || (/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(sig) && sig.length <= 600_000);
+      if (!validSig) return fail("Signature image is too large or not a PNG/JPG", 400);
       await setSetting("company", {
         name: String(c.name ?? "").trim().slice(0, 200) || "GrowVika",
         tagline: String(c.tagline ?? "").slice(0, 200),
@@ -23,6 +27,7 @@ export async function PUT(req: Request) {
         email: String(c.email ?? "").slice(0, 200),
         gst: String(c.gst ?? "").toUpperCase().slice(0, 20),
         udyam: String(c.udyam ?? "").toUpperCase().trim().slice(0, 40),
+        signature: sig,
       });
     }
     if (b.settings) {

@@ -7,6 +7,7 @@ import { Company, Role, Settings, User } from "@/lib/types";
 import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Td, Th } from "@/components/ui";
 import PlanEditor from "@/components/PlanEditor";
 import EmailSettings from "@/components/EmailSettings";
+import SignatureUpload from "@/components/SignatureUpload";
 
 function ListEditor({ label, items, onChange }: { label: string; items: string[]; onChange: (v: string[]) => void }) {
   const [val, setVal] = useState("");
@@ -158,6 +159,10 @@ export default function TeamPage() {
             <Field label="Udyam registration no."><Input value={co.udyam ?? ""} onChange={(e) => setCo({ ...co, udyam: e.target.value.toUpperCase() })} placeholder="UDYAM-XX-00-0000000" /></Field>
             <Field label="GSTIN (leave blank if not registered)"><Input value={co.gst} onChange={(e) => setCo({ ...co, gst: e.target.value.toUpperCase() })} /></Field>
             {!co.gst && <p className="text-xs text-slate-500 sm:col-span-2">No GSTIN, so invoices are issued without GST. Add your GSTIN here once you register and GST options will turn on.</p>}
+            <div className="sm:col-span-2">
+              <p className="mb-1.5 text-xs font-medium text-slate-600">Signature (shown on every invoice and full bill)</p>
+              <SignatureUpload value={co.signature ?? ""} onChange={(v) => setCo({ ...co, signature: v })} />
+            </div>
             <div className="flex items-center justify-end gap-3 sm:col-span-2">
               {saved === "company" && <span className="text-sm text-brand-600">Saved ✓</span>}
               <Button type="submit">Save company details</Button>

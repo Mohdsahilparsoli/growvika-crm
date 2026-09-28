@@ -8,6 +8,7 @@ export const DEFAULT_COMPANY: Company = {
   email: "",
   gst: "",
   udyam: "",
+  signature: "",
 };
 
 export const DEFAULT_SETTINGS: Settings = {
