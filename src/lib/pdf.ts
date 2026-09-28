@@ -3,7 +3,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Client, DB, Expense, Payment } from "./types";
-import { fmtDate, formatPhone, isPaid, pdfInr, planBreakdown, planDecided, planSummary } from "./format";
+import { billedToDate, todayISO, fmtDate, formatPhone, isPaid, pdfInr, periodLabel, planBreakdown, planDecided, planSummary } from "./format";
 
 const BRAND: [number, number, number] = [61, 101, 254];
 const NAVY: [number, number, number] = [3, 8, 27];
@@ -225,9 +225,9 @@ export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "do
     body: [
       ...(decided
         ? [
-            ["Total Billing (Package)", pdfInr(c.totalBilling)],
+            [billedToDate(db, c, p.date) !== c.totalBilling ? "Total Billed till date" : "Total Billing (Package)", pdfInr(billedToDate(db, c, p.date))],
             [isDue ? "Received till date" : "Received till this payment", pdfInr(paidTill)],
-            ["Balance Pending", pdfInr(Math.max(0, c.totalBilling - paidTill))],
+            ["Balance Pending", pdfInr(Math.max(0, billedToDate(db, c, p.date) - paidTill))],
           ]
         : [
             ["Plan", "To be decided"],
@@ -269,7 +269,7 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
   doc.text("Generated on", W - 60, 46);
   doc.setTextColor(...DARK);
   doc.setFont("helvetica", "bold");
-  doc.text(fmtDate(new Date().toISOString().slice(0, 10)), W - 14, 46, { align: "right" });
+  doc.text(fmtDate(todayISO()), W - 14, 46, { align: "right" });
   doc.setFont("helvetica", "normal");
 
   const y = billTo(doc, c, 46);
@@ -280,11 +280,14 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
   const paid = pays.filter(isPaid).reduce((s, p) => s + p.amount, 0);
   const due = pays.filter((p) => !isPaid(p)).reduce((s, p) => s + p.amount, 0);
   const decided = planDecided(c);
-  const bal = Math.max(decided ? c.totalBilling - paid : 0, due);
+  const billed = billedToDate(db, c);
+  const { rows: planRows, other } = planBreakdown(db, c);
+  const hasRecurring = planRows.some((r) => r.schedule.recurring);
+  const bal = Math.max(decided ? billed - paid : 0, due);
 
   const boxW = (W - 28 - 8) / 3;
   const boxes: [string, string, [number, number, number]][] = [
-    decided ? ["TOTAL BILLING", pdfInr(c.totalBilling), DARK] : ["PLAN", "To be decided", DARK],
+    decided ? [hasRecurring ? "BILLED TILL DATE" : "TOTAL BILLING", pdfInr(billed), DARK] : ["PLAN", "To be decided", DARK],
     [decided ? "TOTAL RECEIVED" : "ADVANCE RECEIVED", pdfInr(paid), GREEN],
     decided || due ? ["BALANCE PENDING", pdfInr(Math.max(0, bal)), bal > 0 ? [220, 38, 38] : GREEN] : ["BALANCE PENDING", "-", DARK],
   ];
@@ -306,32 +309,40 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
 
   let running = 0;
   let tableStart = y + 30;
-  const { rows: planRows, other } = planBreakdown(db, c);
   if (planRows.length) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(...DARK);
     doc.text("Plan-wise summary", 14, tableStart);
     doc.setFont("helvetica", "normal");
-    const body = planRows.map((r) => [r.label, r.cycle || "-", pdfInr(r.amount), pdfInr(r.paid), r.due ? pdfInr(r.due) : "-", pdfInr(r.remaining)]);
-    if (other.paid || other.due) body.push(["Other payments (no plan selected on bill)", "-", "-", pdfInr(other.paid), other.due ? pdfInr(other.due) : "-", "-"]);
+    const body = planRows.map((r) => [
+      r.label,
+      r.schedule.recurring ? `${r.cycle}\n${pdfInr(r.price)} / cycle` : r.cycle || "-",
+      fmtDate(r.schedule.start),
+      r.schedule.nextDate ? fmtDate(r.schedule.nextDate) : r.schedule.ended ? "Stopped" : "-",
+      r.schedule.recurring ? `${pdfInr(r.amount)}\n(${periodLabel(r.schedule, r.cycle)})` : pdfInr(r.amount),
+      pdfInr(r.paid),
+      r.due ? pdfInr(r.due) : "-",
+      pdfInr(r.remaining),
+    ]);
+    if (other.paid || other.due) body.push(["Other payments (no plan selected on bill)", "-", "-", "-", "-", pdfInr(other.paid), other.due ? pdfInr(other.due) : "-", "-"]);
     const tAmount = planRows.reduce((s2, r) => s2 + r.amount, 0);
     const tPaid = planRows.reduce((s2, r) => s2 + r.paid, 0) + other.paid;
     const tDue = planRows.reduce((s2, r) => s2 + r.due, 0) + other.due;
     const tRemaining = Math.max(0, tAmount - tPaid);
     autoTable(doc, {
       startY: tableStart + 3,
-      head: [["Plan", "Cycle", "Plan Amount", "Paid", "Bill Due", "Remaining"]],
+      head: [["Plan", "Cycle", "Start", "Next Renewal", "Billed till date", "Paid", "Bill Due", "Remaining"]],
       body,
-      foot: [["Total", "", pdfInr(tAmount), pdfInr(tPaid), tDue ? pdfInr(tDue) : "-", pdfInr(tRemaining)]],
+      foot: [["Total", "", "", "", pdfInr(tAmount), pdfInr(tPaid), tDue ? pdfInr(tDue) : "-", pdfInr(tRemaining)]],
       theme: "grid",
       headStyles: { fillColor: NAVY },
       footStyles: { fillColor: [241, 245, 249], textColor: DARK, fontStyle: "bold" },
-      columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right", fontStyle: "bold" } },
-      styles: { fontSize: 8.5 },
+      columnStyles: { 0: { cellWidth: 42 }, 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" }, 7: { halign: "right", fontStyle: "bold" } },
+      styles: { fontSize: 7.8 },
       didParseCell: (d) => {
-        if (d.section === "body" && d.column.index === 5 && d.cell.raw !== "-" && d.cell.raw !== "Rs. 0") d.cell.styles.textColor = [220, 38, 38];
-        if (d.section === "body" && d.column.index === 5 && d.cell.raw === "Rs. 0") d.cell.styles.textColor = GREEN;
+        if (d.section === "body" && d.column.index === 7 && d.cell.raw !== "-" && d.cell.raw !== "Rs. 0") d.cell.styles.textColor = [220, 38, 38];
+        if (d.section === "body" && d.column.index === 7 && d.cell.raw === "Rs. 0") d.cell.styles.textColor = GREEN;
       },
     });
     tableStart = lastY(doc) + 10;

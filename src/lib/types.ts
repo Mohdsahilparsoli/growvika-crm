@@ -44,6 +44,8 @@ export interface ClientPlan {
   name: string;
   price: number;
   cycle: string;
+  startDate?: string; // when this plan started (defaults to "Client since")
+  endDate?: string; // when renewals stopped (optional)
 }
 
 export type PayMode = "UPI" | "Bank Transfer" | "Cash" | "Cheque";

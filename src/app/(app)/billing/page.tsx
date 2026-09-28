@@ -5,14 +5,14 @@ import { useState } from "react";
 import { FileText } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Badge, Button, Card, PageHeader, Select, StatCard, Td, Th, Empty } from "@/components/ui";
-import { clientBalance, fmtDate, inr, inRange, paidFor, planDecided, RANGE_LABELS, RangeKey, dueFor, isPaid, pendingFor } from "@/lib/format";
+import { billedToDate, clientBalance, fmtDate, inr, inRange, paidFor, planDecided, RANGE_LABELS, RangeKey, dueFor, isPaid, pendingFor } from "@/lib/format";
 import { paymentInvoicePDF } from "@/lib/pdf";
 
 export default function BillingPage() {
   const { db } = useStore();
   const [range, setRange] = useState<RangeKey>("all");
 
-  const totalBilling = db.clients.reduce((s, c) => s + c.totalBilling, 0);
+  const totalBilling = db.clients.reduce((s, c) => s + billedToDate(db, c), 0);
   const received = db.payments.filter(isPaid).reduce((s, p) => s + p.amount, 0);
   const pending = db.clients.reduce((s, c) => s + pendingFor(db, c.id), 0);
   const dueCount = db.payments.filter((p) => !isPaid(p)).length;
@@ -26,7 +26,7 @@ export default function BillingPage() {
       <PageHeader title="Billing" subtitle="Billing for all clients in one place. Click a client to see its full history and Full Bill." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total billing" value={inr(totalBilling)} hint={`${db.clients.length} clients`} />
+        <StatCard label="Total billed till date" value={inr(totalBilling)} hint={`${db.clients.length} clients`} />
         <StatCard label="Total received" value={inr(received)} tone="good" hint={`${db.payments.length - dueCount} payments`} />
         <StatCard label="Total pending" value={inr(pending)} tone="bad" hint={dueCount ? `${dueCount} unpaid bills` : undefined} />
       </div>
@@ -38,15 +38,16 @@ export default function BillingPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-slate-50">
-              <tr><Th>Client</Th><Th right>Total</Th><Th right>Received</Th><Th right>Due</Th><Th right>Status</Th></tr>
+              <tr><Th>Client</Th><Th right>Billed till date</Th><Th right>Received</Th><Th right>Due</Th><Th right>Status</Th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {db.clients.map((c) => {
                 const paid = paidFor(db, c.id);
                 const decided = planDecided(c);
                 const due = dueFor(db, c.id);
-                const bal = Math.max(decided ? c.totalBilling - paid : 0, due);
-                const pct = decided && c.totalBilling ? Math.min(100, (paid / c.totalBilling) * 100) : 0;
+                const billed = billedToDate(db, c);
+                const bal = Math.max(decided ? billed - paid : 0, due);
+                const pct = decided && billed ? Math.min(100, (paid / billed) * 100) : 0;
                 return (
                   <tr key={c.id} className="hover:bg-slate-50/60">
                     <Td>
@@ -55,7 +56,7 @@ export default function BillingPage() {
                         <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                       </div>
                     </Td>
-                    <Td right>{decided ? inr(c.totalBilling) : <span className="text-amber-600">Not decided</span>}</Td>
+                    <Td right>{decided ? inr(billed) : <span className="text-amber-600">Not decided</span>}</Td>
                     <Td right className="text-emerald-600">{inr(paid)}</Td>
                     <Td right className={bal > 0 ? "font-medium text-red-600" : "text-slate-400"}>{decided || due ? inr(Math.max(0, bal)) : "—"}</Td>
                     <Td right>{due > 0 ? <Badge tone="red">Bill due</Badge> : !decided ? <Badge tone="amber">{paid > 0 ? "Advance" : "Plan pending"}</Badge> : bal <= 0 ? <Badge tone="green">Paid</Badge> : paid > 0 ? <Badge tone="amber">Partial</Badge> : <Badge tone="red">Pending</Badge>}</Td>

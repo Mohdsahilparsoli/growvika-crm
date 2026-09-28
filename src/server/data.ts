@@ -55,6 +55,8 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
               name: str(p?.name, 150),
               price: Math.max(0, num(p?.price)),
               cycle: str(p?.cycle, 40),
+              startDate: date(p?.startDate) || undefined,
+              endDate: date(p?.endDate) || undefined,
             })).filter((p) => p.name)
           : [],
       };

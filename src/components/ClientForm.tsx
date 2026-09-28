@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { BILLING_CYCLES, Client, ClientPlan, ClientStatus } from "@/lib/types";
-import { clientPlans, inr, normalizePhone } from "@/lib/format";
+import { clientPlans, fmtDate, inr, normalizePhone, periodLabel, planSchedule } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { Button, Field, Input, Select, Textarea, PhoneInput } from "./ui";
 import { todayISO } from "@/lib/format";
@@ -80,7 +80,16 @@ export default function ClientForm({
     if (!/^\d{10}$/.test(phone)) return setErr("Enter a valid 10-digit phone number");
     if (whatsapp && !/^\d{10}$/.test(whatsapp)) return setErr("Enter a valid 10-digit WhatsApp number");
     const decided = (c.planStatus ?? "Decided") === "Decided";
-    const plans = rows.map(({ custom: _custom, ...r }) => ({ ...r, name: r.name.trim(), price: Number(r.price) || 0 }));
+    const plans = rows.map(({ custom: _custom, ...r }) => {
+      const recurring = !!r.cycle && r.cycle !== "One-time";
+      return {
+        ...r,
+        name: r.name.trim(),
+        price: Number(r.price) || 0,
+        startDate: recurring ? r.startDate || c.joinedAt : r.startDate,
+        endDate: recurring ? r.endDate || undefined : undefined,
+      };
+    });
     if (decided && plans.some((p) => !p.name)) return setErr("Choose a plan in every row, or remove the empty row");
     const first = plans[0];
     onSave({
@@ -203,6 +212,22 @@ export default function ClientForm({
                       <Input type="number" min={0} placeholder="Amount ₹" value={r.price || ""} onChange={(e) => updateRow(r.id, { price: Number(e.target.value) })} />
                     ) : <span />}
                   </div>
+                  {r.cycle && r.cycle !== "One-time" && (() => {
+                    const sched = planSchedule({ ...r, startDate: r.startDate || c.joinedAt }, c);
+                    return (
+                      <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                        <label className="text-xs text-slate-500">Plan start date
+                          <Input type="date" className="mt-1" value={r.startDate || c.joinedAt} onChange={(e) => updateRow(r.id, { startDate: e.target.value })} />
+                        </label>
+                        <label className="text-xs text-slate-500">Stopped on (optional, if the client stops renewing)
+                          <Input type="date" className="mt-1" value={r.endDate ?? ""} onChange={(e) => updateRow(r.id, { endDate: e.target.value || undefined })} />
+                        </label>
+                        <p className="text-xs text-slate-600 sm:col-span-2">
+                          {sched.ended ? <>Renewals stopped. Billed for {periodLabel(sched, r.cycle)}.</> : <>Next renewal: <b>{fmtDate(sched.nextDate)}</b>{isAdmin ? <> · Billed till date: <b>{inr(sched.billed)}</b> ({periodLabel(sched, r.cycle)})</> : null}</>}
+                        </p>
+                      </div>
+                    );
+                  })()}
                   {r.custom && (
                     <Input className="mt-2" value={r.name} onChange={(e) => updateRow(r.id, { name: e.target.value })} placeholder="Custom plan name, e.g. Website + SEO combo" />
                   )}
@@ -215,7 +240,7 @@ export default function ClientForm({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={addRow}>+ Add {rows.length ? "another" : "a"} plan</Button>
               {isAdmin && rows.length > 0 && (
-                <p className="text-sm text-slate-700">Total package amount: <b className="tabular-nums">{inr(total)}</b></p>
+                <p className="text-sm text-slate-700">Total package amount: <b className="tabular-nums">{inr(total)}</b>{rows.some((r) => r.cycle && r.cycle !== "One-time") && <span className="text-xs text-slate-500"> (renewing plans counted once per cycle)</span>}</p>
               )}
             </div>
           </div>

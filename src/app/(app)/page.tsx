@@ -5,7 +5,7 @@ import { Users, TrendingUp, Clock, Wallet, Target, PhoneCall } from "lucide-reac
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useStore } from "@/lib/store";
 import { Badge, Card, PageHeader, StatCard, Empty } from "@/components/ui";
-import { isPaid, pendingFor, formatPhone, telLink, paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
+import { upcomingRenewals, billedToDate, isPaid, pendingFor, formatPhone, telLink, paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
 
 export default function Dashboard() {
   const { db, user, isAdmin, userName } = useStore();
@@ -31,6 +31,7 @@ export default function Dashboard() {
     .sort((a, b) => b.bal - a.bal);
   const pendingTotal = pending.reduce((s, x) => s + x.bal, 0);
   const bacha = totalIncome(db) - totalExpense(db);
+  const renewals = upcomingRenewals(db, isAdmin ? db.clients : db.clients.filter((c) => c.assignedTo === user!.id)).filter((r) => r.daysLeft <= 30);
 
   const months: string[] = [];
   const now = new Date();
@@ -123,7 +124,7 @@ export default function Dashboard() {
                     <Link href={`/clients/${c.id}?tab=billing`} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
                       <div>
                         <p className="text-sm font-medium text-slate-900">{c.business}</p>
-                        <p className="text-xs text-slate-500">Total {inr(c.totalBilling)}</p>
+                        <p className="text-xs text-slate-500">Billed {inr(billedToDate(db, c))}</p>
                       </div>
                       <span className="text-sm font-semibold tabular-nums text-red-600">{inr(bal)}</span>
                     </Link>
@@ -168,6 +169,38 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
+
+      <Card className="mt-6">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+          <div>
+            <h3 className="font-medium text-slate-900">Upcoming renewals</h3>
+            <p className="text-xs text-slate-500">Monthly, quarterly, half-yearly and yearly plans renewing in the next 30 days</p>
+          </div>
+        </div>
+        {renewals.length === 0 ? (
+          <Empty text="No renewals in the next 30 days" />
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {renewals.map((r) => (
+              <li key={r.client.id + r.label}>
+                <Link href={`/clients/${r.client.id}?tab=billing`} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 hover:bg-slate-50">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900">{r.client.business}</p>
+                    <p className="text-xs text-slate-500">{r.label} · {r.cycle}{isAdmin ? ` · ${inr(r.price)} per renewal` : ""}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-slate-900">{fmtDate(r.nextDate)}</p>
+                    <p className={`text-xs ${r.daysLeft <= 7 ? "text-red-600" : "text-amber-600"}`}>
+                      {r.daysLeft === 0 ? "Today" : r.daysLeft === 1 ? "Tomorrow" : `in ${r.daysLeft} days`}
+                      {isAdmin && r.remaining > 0 ? ` · ${inr(r.remaining)} still unpaid` : ""}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       {isAdmin && (
         <div className="mt-6 grid gap-6 lg:grid-cols-3">

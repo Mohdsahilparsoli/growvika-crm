@@ -5,7 +5,7 @@ import { Download, FileText, Pencil, Plus, Send, Trash2, MessageCircle } from "l
 import { useStore, uid } from "@/lib/store";
 import { PAY_MODES, Payment, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, StatCard, Td, Th } from "./ui";
-import { clientPlans, planBreakdown, planName, isPaid, planSummary, fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
+import { daysBetween, billedToDate, periodLabel, clientPlans, planBreakdown, planName, isPaid, planSummary, fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
 import EmailSender from "./EmailSender";
 
 const NO_PLAN = "No plan decided";
@@ -26,8 +26,11 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   const dueTotal = pays.filter((p) => !isPaid(p)).reduce((s, p) => s + p.amount, 0);
   const dueCount = pays.filter((p) => !isPaid(p)).length;
   const decided = planDecided(c);
-  const bal = decided ? c.totalBilling - paid : 0;
+  const billed = billedToDate(db, c);
+  const bal = decided ? billed - paid : 0;
   const breakdown = planBreakdown(db, c);
+  const hasRecurring = breakdown.rows.some((r) => r.schedule.recurring);
+  const nextRenewal = breakdown.rows.map((r) => r.schedule.nextDate).filter(Boolean).sort()[0] ?? "";
   const planTotals = {
     amount: breakdown.rows.reduce((s, r) => s + r.amount, 0),
     paid: breakdown.rows.reduce((s, r) => s + r.paid, 0) + breakdown.other.paid,
@@ -92,8 +95,8 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
     t.kind === "payment" && !isPaid(t.payment)
       ? `Hello ${c.name},\n\nPlease find attached invoice ${t.payment.invoiceNo} dated ${fmtDate(t.payment.date)}${t.payment.service ? ` for ${t.payment.service}` : ""}.\n\nAmount due: ${inr(t.payment.amount)}\n\nKindly make the payment at your earliest convenience.\n\nThank you,\n${db.company.name}`
       : t.kind === "payment"
-      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)}${t.payment.service ? ` for ${t.payment.service}` : ""} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\n${decided ? `Total package: ${inr(c.totalBilling)}\nBalance due: ${inr(Math.max(0, c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0)))}` : "This has been recorded as an advance. Your plan and final amount will be confirmed soon."}\n\nThank you,\n${db.company.name}`
-      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\n${decided ? `Total billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(Math.max(0, bal, dueTotal))}` : `Advance received: ${inr(paid)}${dueTotal ? `\nAmount due: ${inr(dueTotal)}` : ""}\nPlan and final amount: to be decided`}\n\nThank you,\n${db.company.name}`;
+      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)}${t.payment.service ? ` for ${t.payment.service}` : ""} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\n${decided ? `Total billed till date: ${inr(billedToDate(db, c, t.payment.date))}\nBalance due: ${inr(Math.max(0, billedToDate(db, c, t.payment.date) - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo)) && isPaid(p)).reduce((s, p) => s + p.amount, 0)))}` : "This has been recorded as an advance. Your plan and final amount will be confirmed soon."}\n\nThank you,\n${db.company.name}`
+      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\n${decided ? `Total billing: ${inr(billed)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(Math.max(0, bal, dueTotal))}${nextRenewal ? `\nNext renewal: ${fmtDate(nextRenewal)}` : ""}` : `Advance received: ${inr(paid)}${dueTotal ? `\nAmount due: ${inr(dueTotal)}` : ""}\nPlan and final amount: to be decided`}\n\nThank you,\n${db.company.name}`;
 
   const download = (t: SendTarget) => (t.kind === "payment" ? paymentInvoicePDF(db, t.payment) : fullBillPDF(db, clientId));
 
@@ -122,7 +125,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {decided ? (
           <>
-            <StatCard label="Total billing" value={inr(c.totalBilling)} hint={planSummary(c) || undefined} />
+            <StatCard label={hasRecurring ? "Billed till date" : "Total billing"} value={inr(billed)} hint={nextRenewal ? `Next renewal ${fmtDate(nextRenewal)}` : planSummary(c) || undefined} />
             <StatCard label="Total received" value={inr(paid)} tone="good" />
             <StatCard label="Balance pending" value={inr(Math.max(0, bal, dueTotal))} tone={Math.max(bal, dueTotal) > 0 ? "bad" : "good"} hint={dueCount ? `${dueCount} unpaid bill${dueCount > 1 ? "s" : ""} · ${inr(dueTotal)}` : bal < 0 ? `Fully paid · ${inr(-bal)} extra received` : bal === 0 ? "Fully paid" : undefined} />
           </>
@@ -143,19 +146,21 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         <Card className="overflow-hidden">
           <div className="border-b border-slate-100 px-4 py-3">
             <h3 className="font-medium text-slate-900">Plan-wise summary</h3>
-            <p className="text-xs text-slate-500">Payments are counted against the plan chosen on each bill.</p>
+            <p className="text-xs text-slate-500">Payments are counted against the plan chosen on each bill. Renewing plans are billed once per cycle from their start date.</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
+            <table className="w-full min-w-[860px]">
               <thead className="bg-slate-50">
-                <tr><Th>Plan</Th><Th>Cycle</Th><Th right>Plan amount</Th><Th right>Paid</Th><Th right>Bill due</Th><Th right>Remaining</Th></tr>
+                <tr><Th>Plan</Th><Th>Cycle</Th><Th>Start</Th><Th>Next renewal</Th><Th right>Billed till date</Th><Th right>Paid</Th><Th right>Bill due</Th><Th right>Remaining</Th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {breakdown.rows.map((r) => (
                   <tr key={r.label}>
                     <Td className="font-medium text-slate-900">{r.label}</Td>
-                    <Td>{r.cycle || "—"}</Td>
-                    <Td right>{inr(r.amount)}</Td>
+                    <Td>{r.cycle || "—"}{r.schedule.recurring && <span className="block text-xs text-slate-400">{inr(r.price)} / cycle</span>}</Td>
+                    <Td className="whitespace-nowrap">{fmtDate(r.schedule.start)}</Td>
+                    <Td className="whitespace-nowrap">{r.schedule.nextDate ? <RenewalDate iso={r.schedule.nextDate} /> : r.schedule.ended ? <span className="text-slate-400">Stopped</span> : <span className="text-slate-400">One-time</span>}</Td>
+                    <Td right>{inr(r.amount)}{r.schedule.recurring && <span className="block text-xs text-slate-400">{periodLabel(r.schedule, r.cycle)}</span>}</Td>
                     <Td right className="text-emerald-600">{inr(r.paid)}</Td>
                     <Td right className={r.due ? "text-red-600" : "text-slate-400"}>{r.due ? inr(r.due) : "—"}</Td>
                     <Td right className={r.remaining > 0 ? "font-semibold text-red-600" : "font-semibold text-emerald-600"}>{r.remaining > 0 ? inr(r.remaining) : "Fully paid"}</Td>
@@ -164,6 +169,8 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                 {(breakdown.other.paid > 0 || breakdown.other.due > 0) && (
                   <tr className="bg-amber-50/40">
                     <Td className="text-slate-600">Other payments <span className="block text-xs text-slate-400">No plan chosen on the bill. Edit the bill to link it to a plan.</span></Td>
+                    <Td>—</Td>
+                    <Td>—</Td>
                     <Td>—</Td>
                     <Td right>—</Td>
                     <Td right className="text-emerald-600">{inr(breakdown.other.paid)}</Td>
@@ -175,6 +182,8 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
               <tfoot className="bg-slate-50 font-semibold">
                 <tr>
                   <Td className="font-semibold text-slate-900">Total</Td>
+                  <Td />
+                  <Td />
                   <Td />
                   <Td right className="font-semibold">{inr(planTotals.amount)}</Td>
                   <Td right className="font-semibold text-emerald-600">{inr(planTotals.paid)}</Td>
@@ -348,5 +357,17 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         )}
       </Modal>
     </div>
+  );
+}
+
+function RenewalDate({ iso }: { iso: string }) {
+  const days = daysBetween(todayISO(), iso);
+  return (
+    <span>
+      {fmtDate(iso)}
+      <span className={`block text-xs ${days <= 7 ? "text-red-600" : days <= 30 ? "text-amber-600" : "text-slate-400"}`}>
+        {days === 0 ? "Today" : days === 1 ? "Tomorrow" : `in ${days} days`}
+      </span>
+    </span>
   );
 }

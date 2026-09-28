@@ -39,14 +39,14 @@ export const dueFor = (db: DB, clientId: string) =>
 export const pendingFor = (db: DB, clientId: string) => {
   const c = db.clients.find((x) => x.id === clientId);
   if (!c) return 0;
-  const bal = planDecided(c) ? Math.max(0, c.totalBilling - paidFor(db, clientId)) : 0;
+  const bal = planDecided(c) ? Math.max(0, billedToDate(db, c) - paidFor(db, clientId)) : 0;
   return Math.max(bal, dueFor(db, clientId));
 };
 
 export const clientBalance = (db: DB, clientId: string) => {
   const c = db.clients.find((x) => x.id === clientId);
   if (!c || !planDecided(c)) return 0;
-  return c.totalBilling - paidFor(db, clientId);
+  return billedToDate(db, c) - paidFor(db, clientId);
 };
 
 export const totalIncome = (db: DB) => db.payments.filter(isPaid).reduce((s, p) => s + p.amount, 0);
@@ -148,28 +148,88 @@ export const planName = (p: Pick<ClientPlan, "category" | "name">) => [p.categor
 
 export const planSummary = (c: Client) => clientPlans(c).map(planName).join(", ");
 
-// Plan-wise summary: each plan's amount, what was paid against it, and what is left.
+// ---- Renewals ----
+// How many months one billing cycle covers. One-time plans have no renewal.
+export const CYCLE_MONTHS: Record<string, number> = { Monthly: 1, Quarterly: 3, "Half-yearly": 6, Yearly: 12 };
+
+export const addMonths = (iso: string, n: number) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  first.setUTCDate(Math.min(d, last));
+  return first.toISOString().slice(0, 10);
+};
+
+export const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z")) / 86400000);
+
+const validISO = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+export interface PlanSchedule {
+  start: string;
+  recurring: boolean;
+  periods: number; // cycles billed so far (including the current one)
+  billed: number; // plan price x cycles so far
+  periodStart: string;
+  nextDate: string; // next renewal date ("" if one-time or stopped)
+  ended: boolean;
+}
+
+// Works out, from the start date, how many cycles have been billed up to `asOf`
+// and when the next renewal falls.
+export const planSchedule = (pl: ClientPlan, c: Pick<Client, "joinedAt">, asOf = todayISO()): PlanSchedule => {
+  const start = validISO(pl.startDate) ? pl.startDate! : validISO(c.joinedAt) ? c.joinedAt : asOf;
+  const months = CYCLE_MONTHS[pl.cycle];
+  if (!months) return { start, recurring: false, periods: 1, billed: pl.price, periodStart: start, nextDate: "", ended: false };
+  // Stop date: cycles starting before it are billed; otherwise every cycle started up to today
+  const ended = validISO(pl.endDate) && pl.endDate! <= asOf;
+  let n = 0;
+  while (n < 600 && (ended ? addMonths(start, n * months) < pl.endDate! : addMonths(start, n * months) <= asOf)) n++;
+  // Plan starts in the future: nothing billed yet, first payment falls on the start date
+  if (!ended && start > asOf) return { start, recurring: true, periods: 0, billed: 0, periodStart: start, nextDate: start, ended: false };
+  const periods = Math.max(1, n);
+  return {
+    start,
+    recurring: true,
+    periods,
+    billed: periods * pl.price,
+    periodStart: addMonths(start, (periods - 1) * months),
+    nextDate: ended ? "" : addMonths(start, periods * months),
+    ended,
+  };
+};
+
+export const periodLabel = (s: PlanSchedule, cycle: string) => {
+  if (!s.recurring) return "";
+  const unit = cycle === "Monthly" ? "month" : cycle === "Quarterly" ? "quarter" : cycle === "Half-yearly" ? "half-year" : "year";
+  return `${s.periods} ${unit}${s.periods > 1 ? "s" : ""}`;
+};
+
+// Plan-wise summary: each plan's amount billed till date, what was paid against it, and what is left.
 // Payments are matched to a plan by the plan chosen on the bill.
 export interface PlanRow {
   label: string;
   cycle: string;
-  amount: number;
+  price: number; // price per cycle (or one-time price)
+  amount: number; // billed till date
   paid: number;
   due: number;
   remaining: number;
+  schedule: PlanSchedule;
 }
 
-export const planBreakdown = (db: DB, c: Client) => {
-  const pays = db.payments.filter((p) => p.clientId === c.id);
+export const planBreakdown = (db: DB, c: Client, asOf = todayISO()) => {
+  const pays = db.payments.filter((p) => p.clientId === c.id && p.date <= asOf);
   const plans = planDecided(c) ? clientPlans(c) : [];
   const used = new Set<string>();
   const rows: PlanRow[] = plans.map((pl) => {
     const label = planName(pl);
+    const schedule = planSchedule(pl, c, asOf);
     const mine = pays.filter((p) => (p.plan ?? "").trim().toLowerCase() === label.trim().toLowerCase());
     mine.forEach((p) => used.add(p.id));
     const paid = mine.filter(isPaid).reduce((s, p) => s + p.amount, 0);
     const due = mine.filter((p) => !isPaid(p)).reduce((s, p) => s + p.amount, 0);
-    return { label, cycle: pl.cycle, amount: pl.price, paid, due, remaining: Math.max(0, pl.price - paid) };
+    return { label, cycle: pl.cycle, price: pl.price, amount: schedule.billed, paid, due, remaining: Math.max(0, schedule.billed - paid), schedule };
   });
   const rest = pays.filter((p) => !used.has(p.id));
   const other = {
@@ -177,4 +237,32 @@ export const planBreakdown = (db: DB, c: Client) => {
     due: rest.filter((p) => !isPaid(p)).reduce((s, p) => s + p.amount, 0),
   };
   return { rows, other };
+};
+
+// Total billed till date: one-time plans once, recurring plans for every cycle started so far
+export const billedToDate = (db: DB, c: Client, asOf = todayISO()) =>
+  planDecided(c) ? (clientPlans(c).length ? planBreakdown(db, c, asOf).rows.reduce((s, r) => s + r.amount, 0) : c.totalBilling) : 0;
+
+export interface Renewal {
+  client: Client;
+  label: string;
+  cycle: string;
+  price: number;
+  nextDate: string;
+  daysLeft: number;
+  remaining: number;
+}
+
+// Recurring plans with their next renewal date, soonest first
+export const upcomingRenewals = (db: DB, clients: Client[] = db.clients) => {
+  const today = todayISO();
+  const out: Renewal[] = [];
+  for (const c of clients) {
+    if (c.status === "Inactive") continue;
+    for (const r of planBreakdown(db, c).rows) {
+      if (!r.schedule.nextDate) continue;
+      out.push({ client: c, label: r.label, cycle: r.cycle, price: r.price, nextDate: r.schedule.nextDate, daysLeft: daysBetween(today, r.schedule.nextDate), remaining: r.remaining });
+    }
+  }
+  return out.sort((a, b) => a.nextDate.localeCompare(b.nextDate));
 };
