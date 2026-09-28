@@ -3,7 +3,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Client, DB, Expense, Payment } from "./types";
-import { fmtDate, formatPhone, isPaid, pdfInr, planDecided, planSummary } from "./format";
+import { fmtDate, formatPhone, isPaid, pdfInr, planBreakdown, planDecided, planSummary } from "./format";
 
 const BRAND: [number, number, number] = [61, 101, 254];
 const NAVY: [number, number, number] = [3, 8, 27];
@@ -305,8 +305,45 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
   doc.setTextColor(...DARK);
 
   let running = 0;
+  let tableStart = y + 30;
+  const { rows: planRows, other } = planBreakdown(db, c);
+  if (planRows.length) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...DARK);
+    doc.text("Plan-wise summary", 14, tableStart);
+    doc.setFont("helvetica", "normal");
+    const body = planRows.map((r) => [r.label, r.cycle || "-", pdfInr(r.amount), pdfInr(r.paid), r.due ? pdfInr(r.due) : "-", pdfInr(r.remaining)]);
+    if (other.paid || other.due) body.push(["Other payments (no plan selected on bill)", "-", "-", pdfInr(other.paid), other.due ? pdfInr(other.due) : "-", "-"]);
+    const tAmount = planRows.reduce((s2, r) => s2 + r.amount, 0);
+    const tPaid = planRows.reduce((s2, r) => s2 + r.paid, 0) + other.paid;
+    const tDue = planRows.reduce((s2, r) => s2 + r.due, 0) + other.due;
+    const tRemaining = Math.max(0, tAmount - tPaid);
+    autoTable(doc, {
+      startY: tableStart + 3,
+      head: [["Plan", "Cycle", "Plan Amount", "Paid", "Bill Due", "Remaining"]],
+      body,
+      foot: [["Total", "", pdfInr(tAmount), pdfInr(tPaid), tDue ? pdfInr(tDue) : "-", pdfInr(tRemaining)]],
+      theme: "grid",
+      headStyles: { fillColor: NAVY },
+      footStyles: { fillColor: [241, 245, 249], textColor: DARK, fontStyle: "bold" },
+      columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right", fontStyle: "bold" } },
+      styles: { fontSize: 8.5 },
+      didParseCell: (d) => {
+        if (d.section === "body" && d.column.index === 5 && d.cell.raw !== "-" && d.cell.raw !== "Rs. 0") d.cell.styles.textColor = [220, 38, 38];
+        if (d.section === "body" && d.column.index === 5 && d.cell.raw === "Rs. 0") d.cell.styles.textColor = GREEN;
+      },
+    });
+    tableStart = lastY(doc) + 10;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Payment history", 14, tableStart);
+    doc.setFont("helvetica", "normal");
+    tableStart += 3;
+  }
+
   autoTable(doc, {
-    startY: y + 30,
+    startY: tableStart,
     head: [["#", "Date", "Invoice No.", "For", "Status", "Amount", "Total Paid"]],
     body: pays.map((p, i) => {
       if (isPaid(p)) running += p.amount;

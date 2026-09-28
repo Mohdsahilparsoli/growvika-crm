@@ -5,7 +5,7 @@ import { Download, FileText, Pencil, Plus, Send, Trash2, MessageCircle } from "l
 import { useStore, uid } from "@/lib/store";
 import { PAY_MODES, Payment, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, StatCard, Td, Th } from "./ui";
-import { isPaid, planSummary, fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
+import { clientPlans, planBreakdown, planName, isPaid, planSummary, fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
 import EmailSender from "./EmailSender";
 
 const NO_PLAN = "No plan decided";
@@ -27,6 +27,14 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   const dueCount = pays.filter((p) => !isPaid(p)).length;
   const decided = planDecided(c);
   const bal = decided ? c.totalBilling - paid : 0;
+  const breakdown = planBreakdown(db, c);
+  const planTotals = {
+    amount: breakdown.rows.reduce((s, r) => s + r.amount, 0),
+    paid: breakdown.rows.reduce((s, r) => s + r.paid, 0) + breakdown.other.paid,
+    due: breakdown.rows.reduce((s, r) => s + r.due, 0) + breakdown.other.due,
+    remaining: 0,
+  };
+  planTotals.remaining = Math.max(0, planTotals.amount - planTotals.paid);
 
   const [form, setForm] = useState<Payment | null>(null);
   const [err, setErr] = useState("");
@@ -53,7 +61,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
 
   const markPaid = (p: Payment) => {
     setErr("");
-    setCustomPlan(!!p.plan && p.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === p.plan));
+    setCustomPlan(!!p.plan && p.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === p.plan) && !clientPlans(c).some((x) => planName(x) === p.plan));
     setForm({ ...p, status: "Paid", date: todayISO() });
   };
 
@@ -131,6 +139,54 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         )}
       </div>
 
+      {breakdown.rows.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="font-medium text-slate-900">Plan-wise summary</h3>
+            <p className="text-xs text-slate-500">Payments are counted against the plan chosen on each bill.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-slate-50">
+                <tr><Th>Plan</Th><Th>Cycle</Th><Th right>Plan amount</Th><Th right>Paid</Th><Th right>Bill due</Th><Th right>Remaining</Th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {breakdown.rows.map((r) => (
+                  <tr key={r.label}>
+                    <Td className="font-medium text-slate-900">{r.label}</Td>
+                    <Td>{r.cycle || "—"}</Td>
+                    <Td right>{inr(r.amount)}</Td>
+                    <Td right className="text-emerald-600">{inr(r.paid)}</Td>
+                    <Td right className={r.due ? "text-red-600" : "text-slate-400"}>{r.due ? inr(r.due) : "—"}</Td>
+                    <Td right className={r.remaining > 0 ? "font-semibold text-red-600" : "font-semibold text-emerald-600"}>{r.remaining > 0 ? inr(r.remaining) : "Fully paid"}</Td>
+                  </tr>
+                ))}
+                {(breakdown.other.paid > 0 || breakdown.other.due > 0) && (
+                  <tr className="bg-amber-50/40">
+                    <Td className="text-slate-600">Other payments <span className="block text-xs text-slate-400">No plan chosen on the bill. Edit the bill to link it to a plan.</span></Td>
+                    <Td>—</Td>
+                    <Td right>—</Td>
+                    <Td right className="text-emerald-600">{inr(breakdown.other.paid)}</Td>
+                    <Td right className={breakdown.other.due ? "text-red-600" : "text-slate-400"}>{breakdown.other.due ? inr(breakdown.other.due) : "—"}</Td>
+                    <Td right>—</Td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot className="bg-slate-50 font-semibold">
+                <tr>
+                  <Td className="font-semibold text-slate-900">Total</Td>
+                  <Td />
+                  <Td right className="font-semibold">{inr(planTotals.amount)}</Td>
+                  <Td right className="font-semibold text-emerald-600">{inr(planTotals.paid)}</Td>
+                  <Td right className="font-semibold text-red-600">{planTotals.due ? inr(planTotals.due) : "—"}</Td>
+                  <Td right className="font-semibold text-red-600">{inr(planTotals.remaining)}</Td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </Card>
+      )}
+
       <Card className="overflow-hidden">
         <div className="border-b border-slate-100 px-4 py-3">
           <h3 className="font-medium text-slate-900">Billing history</h3>
@@ -175,7 +231,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                         <Button size="sm" variant="secondary" onClick={() => setSend({ kind: "payment", payment: p })} title="Send">
                           <Send size={14} /> Send
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setErr(""); setCustomPlan(!!p.plan && p.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === p.plan)); setForm(p); }} aria-label="Edit">
+                        <Button size="sm" variant="ghost" onClick={() => { setErr(""); setCustomPlan(!!p.plan && p.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === p.plan) && !clientPlans(c).some((x) => planName(x) === p.plan)); setForm(p); }} aria-label="Edit">
                           <Pencil size={14} />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => del(p)} aria-label="Delete">
@@ -217,6 +273,13 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               >
                 <option value={NO_PLAN}>No plan decided</option>
+                {clientPlans(c).length > 0 && planDecided(c) && (
+                  <optgroup label="This client's plans">
+                    {clientPlans(c).map((x) => (
+                      <option key={`cp-${x.id}`} value={planName(x)}>{planName(x)} — {inr(x.price)}{x.cycle ? ` / ${x.cycle}` : ""}</option>
+                    ))}
+                  </optgroup>
+                )}
                 {planCategoriesForService(form.service ?? "", planCategories).map((cat) => (
                   <optgroup key={cat} label={cat}>
                     {db.settings.plans.filter((x) => x.category === cat).map((x) => (

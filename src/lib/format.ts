@@ -147,3 +147,34 @@ export const clientPlans = (c: Client): ClientPlan[] => {
 export const planName = (p: Pick<ClientPlan, "category" | "name">) => [p.category, p.name].filter(Boolean).join(": ");
 
 export const planSummary = (c: Client) => clientPlans(c).map(planName).join(", ");
+
+// Plan-wise summary: each plan's amount, what was paid against it, and what is left.
+// Payments are matched to a plan by the plan chosen on the bill.
+export interface PlanRow {
+  label: string;
+  cycle: string;
+  amount: number;
+  paid: number;
+  due: number;
+  remaining: number;
+}
+
+export const planBreakdown = (db: DB, c: Client) => {
+  const pays = db.payments.filter((p) => p.clientId === c.id);
+  const plans = planDecided(c) ? clientPlans(c) : [];
+  const used = new Set<string>();
+  const rows: PlanRow[] = plans.map((pl) => {
+    const label = planName(pl);
+    const mine = pays.filter((p) => (p.plan ?? "").trim().toLowerCase() === label.trim().toLowerCase());
+    mine.forEach((p) => used.add(p.id));
+    const paid = mine.filter(isPaid).reduce((s, p) => s + p.amount, 0);
+    const due = mine.filter((p) => !isPaid(p)).reduce((s, p) => s + p.amount, 0);
+    return { label, cycle: pl.cycle, amount: pl.price, paid, due, remaining: Math.max(0, pl.price - paid) };
+  });
+  const rest = pays.filter((p) => !used.has(p.id));
+  const other = {
+    paid: rest.filter(isPaid).reduce((s, p) => s + p.amount, 0),
+    due: rest.filter((p) => !isPaid(p)).reduce((s, p) => s + p.amount, 0),
+  };
+  return { rows, other };
+};
