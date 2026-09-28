@@ -80,7 +80,7 @@ export async function sendMail(opts: { to: string; cc?: string; subject: string;
       from: c.fromName ? `"${c.fromName.replace(/"/g, "")}" <${c.user}>` : c.user,
       to: opts.to,
       cc: opts.cc || undefined,
-      replyTo: c.replyTo || (await getSetting<{ email?: string }>("company", {})).email || undefined,
+      replyTo: c.replyTo || undefined,
       subject: opts.subject,
       text: opts.text,
       html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#0f172a">${html}</div>`,

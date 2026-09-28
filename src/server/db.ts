@@ -77,14 +77,14 @@ async function createSchema() {
     await p.query("UPDATE gv_settings SET value = $1::jsonb WHERE key = 'settings'", [JSON.stringify({ ...DEFAULT_SETTINGS, ...cur, plans, services })]);
     await p.query("INSERT INTO gv_settings (key, value) VALUES ('migration_brochure_plans_v1', 'true'::jsonb) ON CONFLICT DO NOTHING");
   }
-  // One-time update: show sales@growvika.com on bills instead of the personal email
-  const se = await p.query("SELECT 1 FROM gv_settings WHERE key = 'migration_sales_email_v1'");
+  // One-time update: keep sahil@growvika.com on bills (undo the earlier switch to sales@growvika.com)
+  const se = await p.query("SELECT 1 FROM gv_settings WHERE key = 'migration_sahil_email_v1'");
   if (!se.rowCount) {
     await p.query(
-      `UPDATE gv_settings SET value = jsonb_set(value, '{email}', '"sales@growvika.com"'::jsonb)
-       WHERE key = 'company' AND LOWER(COALESCE(value->>'email', '')) IN ('sahil@growvika.com', '')`
+      `UPDATE gv_settings SET value = jsonb_set(value, '{email}', '"sahil@growvika.com"'::jsonb)
+       WHERE key = 'company' AND LOWER(COALESCE(value->>'email', '')) = 'sales@growvika.com'`
     );
-    await p.query("INSERT INTO gv_settings (key, value) VALUES ('migration_sales_email_v1', 'true'::jsonb) ON CONFLICT DO NOTHING");
+    await p.query("INSERT INTO gv_settings (key, value) VALUES ('migration_sahil_email_v1', 'true'::jsonb) ON CONFLICT DO NOTHING");
   }
 }
 
