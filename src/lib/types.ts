@@ -35,6 +35,15 @@ export interface Client {
   plan?: string;
   billingCycle?: string;
   planCategory?: string;
+  plans?: ClientPlan[];
+}
+
+export interface ClientPlan {
+  id: string;
+  category: string;
+  name: string;
+  price: number;
+  cycle: string;
 }
 
 export type PayMode = "UPI" | "Bank Transfer" | "Cash" | "Cheque";

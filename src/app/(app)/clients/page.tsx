@@ -7,7 +7,7 @@ import { Plus, Search } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { Badge, Button, Card, Empty, Input, Modal, PageHeader, Select } from "@/components/ui";
 import ClientForm, { emptyClient } from "@/components/ClientForm";
-import { clientBalance, inr, paidFor, planDecided, statusTone } from "@/lib/format";
+import { clientPlans, clientBalance, inr, paidFor, planDecided, statusTone } from "@/lib/format";
 
 export default function ClientsPage() {
   const { db, user, isAdmin, update, userName } = useStore();
@@ -72,7 +72,7 @@ export default function ClientsPage() {
                     <Badge tone={statusTone(c.status)}>{c.status}</Badge>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {planDecided(c) && c.plan && <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">{c.plan}{c.billingCycle ? ` · ${c.billingCycle}` : ""}</span>}
+                    {planDecided(c) && clientPlans(c).map((p) => <span key={p.id} className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">{p.name}{p.cycle ? ` · ${p.cycle}` : ""}</span>)}
                     {c.services.map((s) => (
                       <span key={s} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{s}</span>
                     ))}

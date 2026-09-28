@@ -9,7 +9,7 @@ import { Badge, Button, Card, Empty, Field, Input, Modal, Select, Textarea } fro
 import ClientForm from "@/components/ClientForm";
 import BillingPanel from "@/components/BillingPanel";
 import { COMM_TYPES, Comm, CommType } from "@/lib/types";
-import { formatPhone, telLink, clientBalance, fmtDate, inr, paidFor, planDecided, statusTone, todayISO, waLink } from "@/lib/format";
+import { clientPlans, formatPhone, telLink, clientBalance, fmtDate, inr, paidFor, planDecided, statusTone, todayISO, waLink } from "@/lib/format";
 
 type Tab = "profile" | "billing" | "comms";
 
@@ -145,11 +145,29 @@ export default function ClientDetail() {
                 <h3 className="font-medium text-slate-900">Plan &amp; services</h3>
                 {decided ? <Badge tone="green">Plan decided</Badge> : <Badge tone="amber">Plan not decided yet</Badge>}
               </div>
-              <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-3">
-                <div><dt className="text-xs text-slate-500">Plan</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? c.plan || "—" : "To be decided"}{decided && c.planCategory && <span className="block text-xs text-slate-500">{c.planCategory}</span>}</dd></div>
-                <div><dt className="text-xs text-slate-500">Billing cycle</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? c.billingCycle || "—" : "To be decided"}</dd></div>
-                {isAdmin && <div><dt className="text-xs text-slate-500">Package amount</dt><dd className="mt-0.5 text-sm text-slate-900">{decided ? inr(c.totalBilling) : "To be decided"}</dd></div>}
-              </dl>
+              {decided && clientPlans(c).length > 0 ? (
+                <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                      <tr><th className="px-3 py-2 font-medium">Plan</th><th className="px-3 py-2 font-medium">Billing cycle</th>{isAdmin && <th className="px-3 py-2 text-right font-medium">Amount</th>}</tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {clientPlans(c).map((p) => (
+                        <tr key={p.id}>
+                          <td className="px-3 py-2 text-slate-900">{p.name}<span className="block text-xs text-slate-500">{p.category}</span></td>
+                          <td className="px-3 py-2 text-slate-700">{p.cycle || "—"}</td>
+                          {isAdmin && <td className="px-3 py-2 text-right tabular-nums text-slate-900">{inr(p.price)}</td>}
+                        </tr>
+                      ))}
+                    </tbody>
+                    {isAdmin && clientPlans(c).length > 1 && (
+                      <tfoot className="bg-slate-50"><tr><td className="px-3 py-2 font-medium" colSpan={2}>Total package</td><td className="px-3 py-2 text-right font-semibold tabular-nums">{inr(c.totalBilling)}</td></tr></tfoot>
+                    )}
+                  </table>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-slate-500">{decided ? "No plan added yet" : "Plan to be decided"}</p>
+              )}
               <div className="mt-4">
                 <p className="text-xs text-slate-500">Services</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">

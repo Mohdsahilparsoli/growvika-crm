@@ -1,4 +1,4 @@
-import { Client, DB } from "./types";
+import { Client, ClientPlan, DB } from "./types";
 
 export const planDecided = (c: Pick<Client, "planStatus">) => c.planStatus !== "Not decided";
 
@@ -123,3 +123,14 @@ export const telLink = (phone: string) => {
   const n = normalizePhone(phone);
   return n.length === 10 ? `tel:+91${n}` : `tel:${phone}`;
 };
+
+// All plans of a client (supports older clients that had a single plan)
+export const clientPlans = (c: Client): ClientPlan[] => {
+  if (c.plans && c.plans.length) return c.plans;
+  if (c.plan) return [{ id: "legacy", category: c.planCategory ?? "", name: c.plan, price: c.totalBilling, cycle: c.billingCycle ?? "" }];
+  return [];
+};
+
+export const planName = (p: Pick<ClientPlan, "category" | "name">) => [p.category, p.name].filter(Boolean).join(": ");
+
+export const planSummary = (c: Client) => clientPlans(c).map(planName).join(", ");

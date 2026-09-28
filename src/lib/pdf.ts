@@ -3,7 +3,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Client, DB, Expense, Payment } from "./types";
-import { fmtDate, formatPhone, pdfInr, planDecided } from "./format";
+import { fmtDate, formatPhone, pdfInr, planDecided, planSummary } from "./format";
 
 const BRAND: [number, number, number] = [61, 101, 254];
 const NAVY: [number, number, number] = [3, 8, 27];
@@ -167,7 +167,7 @@ export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "do
   const y = billTo(doc, c, 46);
 
   const decided = planDecided(c);
-  const planText = decided ? [[c.planCategory, c.plan].filter(Boolean).join(": "), c.billingCycle].filter(Boolean).join(" / ") : "Advance (plan to be decided)";
+  const planText = decided ? planSummary(c) : "Advance (plan to be decided)";
   const desc = p.service || p.plan
     ? [p.service, p.plan, p.note].filter(Boolean).join(" - ")
     : [planText, c.services.length ? `${c.services.join(", ")} services` : "", p.note].filter(Boolean).join(" - ");
@@ -318,7 +318,7 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
 
   const ty = lastY(doc) + 8;
   doc.setFontSize(9);
-  doc.text(`Plan: ${decided ? [c.plan, c.billingCycle].filter(Boolean).join(" / ") || "-" : "To be decided"}   |   Services: ${c.services.join(", ") || "-"}`, 14, ty);
+  doc.text(doc.splitTextToSize(`Plan: ${decided ? planSummary(c) || "-" : "To be decided"}   |   Services: ${c.services.join(", ") || "-"}`, doc.internal.pageSize.getWidth() - 28), 14, ty);
   doc.text(`Total payments: ${pays.length}`, 14, ty + 5);
 
   signature(doc, db);

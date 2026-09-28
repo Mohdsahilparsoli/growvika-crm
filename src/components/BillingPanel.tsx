@@ -5,7 +5,7 @@ import { Download, FileText, Pencil, Plus, Send, Trash2, MessageCircle } from "l
 import { useStore, uid } from "@/lib/store";
 import { PAY_MODES, Payment, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, StatCard, Td, Th } from "./ui";
-import { fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
+import { planSummary, fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink } from "@/lib/format";
 import EmailSender from "./EmailSender";
 
 const NO_PLAN = "No plan decided";
@@ -104,7 +104,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {decided ? (
           <>
-            <StatCard label="Total billing" value={inr(c.totalBilling)} hint={[c.plan, c.billingCycle].filter(Boolean).join(" · ") || undefined} />
+            <StatCard label="Total billing" value={inr(c.totalBilling)} hint={planSummary(c) || undefined} />
             <StatCard label="Total received" value={inr(paid)} tone="good" />
             <StatCard label="Balance pending" value={inr(Math.max(0, bal))} tone={bal > 0 ? "bad" : "good"} hint={bal < 0 ? `Fully paid · ${inr(-bal)} extra received` : bal === 0 ? "Fully paid" : undefined} />
           </>

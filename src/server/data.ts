@@ -48,8 +48,23 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
         plan: str(raw.plan, 100),
         billingCycle: str(raw.billingCycle, 50),
         planCategory: str(raw.planCategory, 80),
+        plans: Array.isArray(raw.plans)
+          ? (raw.plans as Record<string, unknown>[]).slice(0, 20).map((p, i) => ({
+              id: str(p?.id, 60) || `pl${i}`,
+              category: str(p?.category, 80),
+              name: str(p?.name, 150),
+              price: Math.max(0, num(p?.price)),
+              cycle: str(p?.cycle, 40),
+            })).filter((p) => p.name)
+          : [],
       };
-      if (c.planStatus === "Not decided") c.totalBilling = 0;
+      if (c.planStatus === "Decided" && c.plans && c.plans.length) {
+        c.totalBilling = c.plans.reduce((s, p) => s + p.price, 0);
+        c.plan = c.plans[0].name;
+        c.planCategory = c.plans[0].category;
+        c.billingCycle = c.plans[0].cycle;
+      }
+      if (c.planStatus === "Not decided") { c.totalBilling = 0; c.plans = []; c.plan = ""; c.planCategory = ""; c.billingCycle = ""; }
       if (!c.name || !c.business) throw new HttpError(400, "Client name and business name are required");
       return c as unknown as Record<string, unknown>;
     }
@@ -139,7 +154,7 @@ export async function snapshot(user: SessionUser): Promise<DB> {
     const [payments, expenses] = await Promise.all([listRecords<Payment>("payments"), listRecords<Expense>("expenses")]);
     return { company, settings: { ...DEFAULT_SETTINGS, ...settings, plans: normalizePlans(settings.plans) }, invoiceCounter: Number(counter), users, clients, leads, comms, payments, expenses };
   }
-  const myClients = clients.filter((c) => c.assignedTo === user.id).map((c) => ({ ...c, totalBilling: 0 }));
+  const myClients = clients.filter((c) => c.assignedTo === user.id).map((c) => ({ ...c, totalBilling: 0, plans: (c.plans ?? []).map((p) => ({ ...p, price: 0 })) }));
   const ids = new Set(myClients.map((c) => c.id));
   return {
     company,
@@ -185,7 +200,7 @@ export async function updateRecord(user: SessionUser, col: Collection, id: strin
   if (!admin) {
     if (col === "payments" || col === "expenses") throw new HttpError(403, "Only admins can do this");
     if ((col === "clients" || col === "leads") && existing.assignedTo !== user.id) throw new HttpError(403, "Not assigned to you");
-    if (col === "clients") raw = { ...raw, assignedTo: existing.assignedTo, totalBilling: existing.totalBilling, gstApplicable: existing.gstApplicable };
+    if (col === "clients") raw = { ...raw, assignedTo: existing.assignedTo, totalBilling: existing.totalBilling, gstApplicable: existing.gstApplicable, plans: existing.plans, planStatus: existing.planStatus, plan: existing.plan, planCategory: existing.planCategory, billingCycle: existing.billingCycle };
     if (col === "leads") raw = { ...raw, assignedTo: existing.assignedTo };
     if (col === "comms" && !(await clientOwnedBy(String(existing.clientId), user.id))) throw new HttpError(403, "Not assigned to you");
   }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BILLING_CYCLES, Client, ClientStatus } from "@/lib/types";
-import { inr, normalizePhone } from "@/lib/format";
+import { BILLING_CYCLES, Client, ClientPlan, ClientStatus } from "@/lib/types";
+import { clientPlans, inr, normalizePhone } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { Button, Field, Input, Select, Textarea, PhoneInput } from "./ui";
 import { todayISO } from "@/lib/format";
@@ -28,6 +28,7 @@ export const emptyClient = (assignedTo: string): Client => ({
   planStatus: "Not decided",
   plan: "",
   billingCycle: "",
+  plans: [],
 });
 
 export default function ClientForm({
@@ -48,27 +49,27 @@ export default function ClientForm({
   };
 
   const planCategories = Array.from(new Set(db.settings.plans.map((p) => p.category)));
-  const matched = db.settings.plans.find((p) => p.name === c.plan && (!c.planCategory || p.category === c.planCategory));
-  const [customMode, setCustomMode] = useState(!!c.plan && !matched);
-  const selectedPlan = customMode ? undefined : matched;
-  const selectedPlanId = customMode ? "__custom" : matched?.id ?? "";
+  const catalogKey = (p: { category: string; name: string }) => `${p.category}|${p.name}`;
+  const [rows, setRows] = useState<(ClientPlan & { custom: boolean })[]>(() =>
+    clientPlans(initial).map((p, i) => ({
+      ...p,
+      id: p.id === "legacy" ? `pl${i}` : p.id,
+      custom: !db.settings.plans.some((x) => catalogKey(x) === catalogKey(p)),
+    }))
+  );
+  const total = rows.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
 
-  const choosePlan = (id: string) => {
-    if (id === "__custom") {
-      setCustomMode(true);
-      setC((p) => ({ ...p, planCategory: "Custom" }));
-      return;
-    }
-    setCustomMode(false);
-    const p = db.settings.plans.find((x) => x.id === id);
-    setC((prev) => ({
-      ...prev,
-      plan: p?.name ?? "",
-      planCategory: p?.category ?? "",
-      billingCycle: p?.cycle || prev.billingCycle,
-      totalBilling: p ? p.price : prev.totalBilling,
-    }));
+  const updateRow = (id: string, patch: Partial<ClientPlan & { custom: boolean }>) => {
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     setErr("");
+  };
+  const addRow = () => setRows((rs) => [...rs, { id: `pl${Date.now().toString(36)}${rs.length}`, category: "", name: "", price: 0, cycle: "", custom: false }]);
+  const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
+  const pickPlan = (id: string, value: string) => {
+    if (value === "__custom") return updateRow(id, { custom: true, category: "Custom", name: "", price: 0 });
+    const p = db.settings.plans.find((x) => x.id === value);
+    if (p) updateRow(id, { custom: false, category: p.category, name: p.name, price: p.price, cycle: p.cycle });
+    else updateRow(id, { custom: false, category: "", name: "", price: 0, cycle: "" });
   };
 
   const submit = (e: React.FormEvent) => {
@@ -78,7 +79,20 @@ export default function ClientForm({
     const whatsapp = normalizePhone(c.whatsapp) || phone;
     if (!/^\d{10}$/.test(phone)) return setErr("Enter a valid 10-digit phone number");
     if (whatsapp && !/^\d{10}$/.test(whatsapp)) return setErr("Enter a valid 10-digit WhatsApp number");
-    onSave({ ...c, phone, whatsapp });
+    const decided = (c.planStatus ?? "Decided") === "Decided";
+    const plans = rows.map(({ custom: _custom, ...r }) => ({ ...r, name: r.name.trim(), price: Number(r.price) || 0 }));
+    if (decided && plans.some((p) => !p.name)) return setErr("Choose a plan in every row, or remove the empty row");
+    const first = plans[0];
+    onSave({
+      ...c,
+      phone,
+      whatsapp,
+      plans: decided ? plans : [],
+      totalBilling: decided ? (plans.length ? plans.reduce((sum, p) => sum + p.price, 0) : c.totalBilling) : 0,
+      plan: decided ? first?.name ?? "" : "",
+      planCategory: decided ? first?.category ?? "" : "",
+      billingCycle: decided ? first?.cycle ?? "" : "",
+    });
   };
 
   return (
@@ -144,7 +158,7 @@ export default function ClientForm({
               <button
                 type="button"
                 key={ps}
-                onClick={() => set("planStatus", ps)}
+                onClick={() => { set("planStatus", ps); if (ps === "Decided" && rows.length === 0) addRow(); }}
                 className={`rounded-md px-3 py-1.5 text-sm ${on ? "bg-brand-500 text-white" : "text-slate-600 hover:bg-slate-50"}`}
               >
                 {ps === "Decided" ? "Plan decided" : "Not decided yet"}
@@ -153,45 +167,57 @@ export default function ClientForm({
           })}
         </div>
         {(c.planStatus ?? "Decided") === "Decided" ? (
-          <div className="mt-3 grid gap-4 sm:grid-cols-3">
-            <Field label="Plan" full>
-              <select
-                value={selectedPlanId}
-                onChange={(e) => choosePlan(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              >
-                <option value="">Select a plan</option>
-                {planCategories.map((cat) => (
-                  <optgroup key={cat} label={cat}>
-                    {db.settings.plans.filter((p) => p.category === cat).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}{isAdmin ? ` — ${inr(p.price)}` : ""}{p.cycle ? ` / ${p.cycle}` : ""}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-                <option value="__custom">Custom plan (type your own)</option>
-              </select>
-            </Field>
+          <div className="mt-3 space-y-3">
             {db.settings.plans.length === 0 && (
-              <p className="text-xs text-amber-700 sm:col-span-3">No plans added yet. Add your plans with prices in Team &amp; Settings → Plans &amp; prices.</p>
+              <p className="text-xs text-amber-700">No plans added yet. Add your plans with prices in Team &amp; Settings → Plans &amp; prices.</p>
             )}
-            {selectedPlanId === "__custom" && (
-              <Field label="Custom plan name">
-                <Input value={c.plan ?? ""} onChange={(e) => set("plan", e.target.value)} placeholder="e.g. Website + SEO combo" />
-              </Field>
-            )}
-            <Field label="Billing cycle">
-              <Select value={c.billingCycle ?? ""} onChange={(e) => set("billingCycle", e.target.value)} options={[{ value: "", label: "Select" }, ...Array.from(new Set([...BILLING_CYCLES, c.billingCycle ?? ""].filter(Boolean)))]} />
-            </Field>
-            {isAdmin && (
-              <Field label="Package amount (₹)">
-                <Input type="number" min={0} value={c.totalBilling || ""} onChange={(e) => set("totalBilling", Number(e.target.value))} />
-              </Field>
-            )}
-            {isAdmin && selectedPlan && c.totalBilling !== selectedPlan.price && (
-              <p className="text-xs text-slate-500 sm:col-span-3">Plan price is {inr(selectedPlan.price)}. You changed it to {inr(c.totalBilling)} (e.g. a discount).</p>
-            )}
+            {rows.map((r, i) => {
+              const selected = r.custom ? "__custom" : db.settings.plans.find((x) => catalogKey(x) === catalogKey(r))?.id ?? "";
+              const catalog = db.settings.plans.find((x) => catalogKey(x) === catalogKey(r));
+              return (
+                <div key={r.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-500">Plan {i + 1}</span>
+                    <button type="button" onClick={() => removeRow(r.id)} className="text-xs text-red-500 hover:underline">Remove</button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+                    <select
+                      value={selected}
+                      onChange={(e) => pickPlan(r.id, e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    >
+                      <option value="">Select a plan</option>
+                      {planCategories.map((cat) => (
+                        <optgroup key={cat} label={cat}>
+                          {db.settings.plans.filter((p) => p.category === cat).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {cat} · {p.name}{isAdmin ? ` — ${inr(p.price)}` : ""}{p.cycle ? ` / ${p.cycle}` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      <optgroup label="Custom"><option value="__custom">Custom plan (type name)</option></optgroup>
+                    </select>
+                    <Select value={r.cycle} onChange={(e) => updateRow(r.id, { cycle: e.target.value })} options={[{ value: "", label: "Billing cycle" }, ...Array.from(new Set([...BILLING_CYCLES, r.cycle].filter(Boolean)))]} />
+                    {isAdmin ? (
+                      <Input type="number" min={0} placeholder="Amount ₹" value={r.price || ""} onChange={(e) => updateRow(r.id, { price: Number(e.target.value) })} />
+                    ) : <span />}
+                  </div>
+                  {r.custom && (
+                    <Input className="mt-2" value={r.name} onChange={(e) => updateRow(r.id, { name: e.target.value })} placeholder="Custom plan name, e.g. Website + SEO combo" />
+                  )}
+                  {isAdmin && catalog && r.price !== catalog.price && (
+                    <p className="mt-1.5 text-xs text-slate-500">Plan price is {inr(catalog.price)}. You changed it to {inr(r.price)} (e.g. a discount).</p>
+                  )}
+                </div>
+              );
+            })}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={addRow}>+ Add {rows.length ? "another" : "a"} plan</Button>
+              {isAdmin && rows.length > 0 && (
+                <p className="text-sm text-slate-700">Total package amount: <b className="tabular-nums">{inr(total)}</b></p>
+              )}
+            </div>
           </div>
         ) : (
           <p className="mt-3 text-xs text-slate-500">
