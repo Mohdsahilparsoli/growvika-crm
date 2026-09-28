@@ -9,6 +9,7 @@ import { fmtDate, inr, planCategoriesForService, planDecided, todayISO, waLink }
 import EmailSender from "./EmailSender";
 
 const NO_PLAN = "No plan decided";
+const CUSTOM = "__custom_plan";
 import { fullBillPDF, paymentInvoicePDF } from "@/lib/pdf";
 
 type SendTarget = { kind: "payment"; payment: Payment } | { kind: "full" };
@@ -40,7 +41,10 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   const planCategories = Array.from(new Set(db.settings.plans.map((x) => x.category)));
   const planOptionLabel = (x: { category: string; name: string }) => `${x.category}: ${x.name}`;
 
+  const [customPlan, setCustomPlan] = useState(false);
+
   const openNew = () => {
+    setCustomPlan(false);
     setErr("");
     setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "", service: c.services[0] ?? "", plan: NO_PLAN });
   };
@@ -50,6 +54,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
     if (!form) return;
     if (!form.amount || form.amount <= 0) return setErr("Enter a valid amount");
     if (!form.date) return setErr("Pick a date");
+    if (customPlan && !(form.plan ?? "").trim()) return setErr("Type the custom plan name");
     if (form.id) {
       update((d) => ({ ...d, payments: d.payments.map((p) => (p.id === form.id ? form : p)) }));
       setForm(null);
@@ -151,7 +156,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                         <Button size="sm" variant="secondary" onClick={() => setSend({ kind: "payment", payment: p })} title="Send">
                           <Send size={14} /> Send
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setErr(""); setForm(p); }} aria-label="Edit">
+                        <Button size="sm" variant="ghost" onClick={() => { setErr(""); setCustomPlan(!!p.plan && p.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === p.plan)); setForm(p); }} aria-label="Edit">
                           <Pencil size={14} />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => del(p)} aria-label="Delete">
@@ -179,18 +184,20 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             <Field label="Service" full>
               <Select
                 value={form.service ?? ""}
-                onChange={(e) => setForm({ ...form, service: e.target.value, plan: NO_PLAN })}
+                onChange={(e) => { setCustomPlan(false); setForm({ ...form, service: e.target.value, plan: NO_PLAN }); }}
                 options={[{ value: "", label: "Select service" }, ...Array.from(new Set([...allServices, form.service ?? ""].filter(Boolean)))]}
               />
             </Field>
             <Field label="Plan" full>
               <select
-                value={form.plan || NO_PLAN}
-                onChange={(e) => setForm({ ...form, plan: e.target.value })}
+                value={customPlan ? CUSTOM : form.plan || NO_PLAN}
+                onChange={(e) => {
+                  if (e.target.value === CUSTOM) { setCustomPlan(true); setForm({ ...form, plan: "" }); }
+                  else { setCustomPlan(false); setForm({ ...form, plan: e.target.value }); }
+                }}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               >
                 <option value={NO_PLAN}>No plan decided</option>
-                {form.plan && form.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === form.plan) && <option value={form.plan}>{form.plan}</option>}
                 {planCategoriesForService(form.service ?? "", planCategories).map((cat) => (
                   <optgroup key={cat} label={cat}>
                     {db.settings.plans.filter((x) => x.category === cat).map((x) => (
@@ -198,9 +205,15 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                     ))}
                   </optgroup>
                 ))}
+                <optgroup label="Custom">
+                  <option value={CUSTOM}>Custom plan (type name)</option>
+                </optgroup>
               </select>
-              {form.service && planCategoriesForService(form.service, planCategories).length === 0 && (
-                <span className="text-xs text-slate-500">No plans linked to {form.service}. Choose &quot;No plan decided&quot; or pick another service.</span>
+              {customPlan && (
+                <Input className="mt-2" value={form.plan ?? ""} onChange={(e) => { setErr(""); setForm({ ...form, plan: e.target.value }); }} placeholder="Type plan name, e.g. GMB Special – 3 months" autoFocus />
+              )}
+              {!customPlan && form.service && planCategoriesForService(form.service, planCategories).length === 0 && (
+                <span className="text-xs text-slate-500">No plans linked to {form.service}. Choose &quot;No plan decided&quot; or type a custom plan.</span>
               )}
             </Field>
             <Field label="Payment mode">
