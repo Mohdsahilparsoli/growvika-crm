@@ -175,7 +175,7 @@ export default function ClientDetail() {
                     <div className="mt-3 space-y-2 text-sm">
                       <div className="flex justify-between"><span className="text-slate-500">Total</span><span className="tabular-nums">{inr(c.totalBilling)}</span></div>
                       <div className="flex justify-between"><span className="text-slate-500">Received</span><span className="tabular-nums text-emerald-600">{inr(paid)}</span></div>
-                      <div className="flex justify-between border-t border-slate-100 pt-2 font-medium"><span>Due</span><span className={`tabular-nums ${bal > 0 ? "text-red-600" : "text-emerald-600"}`}>{inr(bal)}</span></div>
+                      <div className="flex justify-between border-t border-slate-100 pt-2 font-medium"><span>Due</span><span className={`tabular-nums ${bal > 0 ? "text-red-600" : "text-emerald-600"}`}>{inr(Math.max(0, bal))}</span></div>
                     </div>
                   ) : (
                     <div className="mt-3 space-y-2 text-sm">

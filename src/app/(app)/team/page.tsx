@@ -6,6 +6,7 @@ import { useStore, uid } from "@/lib/store";
 import { Company, Role, Settings, User } from "@/lib/types";
 import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Td, Th } from "@/components/ui";
 import PlanEditor from "@/components/PlanEditor";
+import EmailSettings from "@/components/EmailSettings";
 
 function ListEditor({ label, items, onChange }: { label: string; items: string[]; onChange: (v: string[]) => void }) {
   const [val, setVal] = useState("");
@@ -188,6 +189,8 @@ export default function TeamPage() {
           </form>
         </Card>
       </div>
+
+      <EmailSettings defaultFromName={db.company.name} />
 
       <PlanEditor />
 

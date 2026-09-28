@@ -55,7 +55,7 @@ export default function BillingPage() {
                     </Td>
                     <Td right>{decided ? inr(c.totalBilling) : <span className="text-amber-600">Not decided</span>}</Td>
                     <Td right className="text-emerald-600">{inr(paid)}</Td>
-                    <Td right className={bal > 0 ? "font-medium text-red-600" : "text-slate-400"}>{decided ? inr(bal) : "—"}</Td>
+                    <Td right className={bal > 0 ? "font-medium text-red-600" : "text-slate-400"}>{decided ? inr(Math.max(0, bal)) : "—"}</Td>
                     <Td right>{!decided ? <Badge tone="amber">{paid > 0 ? "Advance" : "Plan pending"}</Badge> : bal <= 0 ? <Badge tone="green">Paid</Badge> : paid > 0 ? <Badge tone="amber">Partial</Badge> : <Badge tone="red">Pending</Badge>}</Td>
                   </tr>
                 );

@@ -11,6 +11,21 @@ const GREEN: [number, number, number] = [5, 150, 105];
 const DARK: [number, number, number] = [15, 23, 42];
 const MUTED: [number, number, number] = [100, 116, 139];
 
+export type Output = "download" | "base64";
+export interface PdfResult {
+  filename: string;
+  base64: string;
+}
+
+function finish(doc: jsPDF, filename: string, output: Output): PdfResult {
+  if (output === "download") {
+    doc.save(filename);
+    return { filename, base64: "" };
+  }
+  const uri = doc.output("datauristring");
+  return { filename, base64: uri.slice(uri.indexOf(",") + 1) };
+}
+
 const lastY = (doc: jsPDF) =>
   (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
 
@@ -46,7 +61,7 @@ async function header(doc: jsPDF, db: DB, title: string) {
   doc.setTextColor(255, 255, 255);
   if (logo) {
     const h = 9;
-    doc.addImage(logo.data, "PNG", 14, 8, (logo.w / logo.h) * h, h);
+    doc.addImage(logo.data, "PNG", 14, 8, (logo.w / logo.h) * h, h, "gv-logo", "FAST");
   } else {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
@@ -99,7 +114,7 @@ function footer(doc: jsPDF, db: DB) {
   doc.text("This is a computer generated document.", W - 14, H - 13, { align: "right" });
 }
 
-export async function paymentInvoicePDF(db: DB, p: Payment) {
+export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "download") {
   const c = db.clients.find((x) => x.id === p.clientId)!;
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
@@ -178,7 +193,7 @@ export async function paymentInvoicePDF(db: DB, p: Payment) {
         ? [
             ["Total Billing (Package)", pdfInr(c.totalBilling)],
             ["Received till this payment", pdfInr(paidTill)],
-            ["Balance Pending", pdfInr(c.totalBilling - paidTill)],
+            ["Balance Pending", pdfInr(Math.max(0, c.totalBilling - paidTill))],
           ]
         : [
             ["Plan", "To be decided"],
@@ -203,10 +218,10 @@ export async function paymentInvoicePDF(db: DB, p: Payment) {
   doc.setTextColor(...DARK);
 
   footer(doc, db);
-  doc.save(`${p.invoiceNo}-${c.business.replace(/\s+/g, "-")}.pdf`);
+  return finish(doc, `${p.invoiceNo}-${c.business.replace(/\s+/g, "-")}.pdf`, output);
 }
 
-export async function fullBillPDF(db: DB, clientId: string) {
+export async function fullBillPDF(db: DB, clientId: string, output: Output = "download") {
   const c = db.clients.find((x) => x.id === clientId)!;
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
@@ -233,7 +248,7 @@ export async function fullBillPDF(db: DB, clientId: string) {
   const boxes: [string, string, [number, number, number]][] = [
     decided ? ["TOTAL BILLING", pdfInr(c.totalBilling), DARK] : ["PLAN", "To be decided", DARK],
     [decided ? "TOTAL RECEIVED" : "ADVANCE RECEIVED", pdfInr(paid), GREEN],
-    decided ? ["BALANCE PENDING", pdfInr(bal), bal > 0 ? [220, 38, 38] : GREEN] : ["BALANCE PENDING", "-", DARK],
+    decided ? ["BALANCE PENDING", pdfInr(Math.max(0, bal)), bal > 0 ? [220, 38, 38] : GREEN] : ["BALANCE PENDING", "-", DARK],
   ];
   boxes.forEach(([label, val, col], i) => {
     const x = 14 + i * (boxW + 4);
@@ -273,7 +288,7 @@ export async function fullBillPDF(db: DB, clientId: string) {
   doc.text(`Total payments: ${pays.length}`, 14, ty + 5);
 
   footer(doc, db);
-  doc.save(`Full-Bill-${c.business.replace(/\s+/g, "-")}.pdf`);
+  return finish(doc, `Full-Bill-${c.business.replace(/\s+/g, "-")}.pdf`, output);
 }
 
 export async function expenseReportPDF(

@@ -1,6 +1,7 @@
 import "server-only";
 import { Pool } from "pg";
-import { DEFAULT_COMPANY, DEFAULT_SETTINGS } from "@/lib/defaults";
+import { DEFAULT_COMPANY, DEFAULT_SETTINGS, normalizePlans } from "@/lib/defaults";
+import { BROCHURE_PLANS, EXTRA_SERVICES } from "@/lib/brochurePlans";
 
 const globalForDb = globalThis as unknown as { gvPool?: Pool; gvSchema?: Promise<void> };
 
@@ -62,6 +63,19 @@ async function createSchema() {
        WHERE key = 'settings' AND NOT (value->'services' ? 'GMB')`
     );
     await p.query("INSERT INTO gv_settings (key, value) VALUES ('migration_gmb', 'true'::jsonb) ON CONFLICT DO NOTHING");
+  }
+  // One-time update: load plans & prices from the GrowVika brochures
+  const bp = await p.query("SELECT 1 FROM gv_settings WHERE key = 'migration_brochure_plans_v1'");
+  if (!bp.rowCount) {
+    const r = await p.query("SELECT value FROM gv_settings WHERE key = 'settings'");
+    const cur = (r.rows[0]?.value ?? {}) as Record<string, unknown>;
+    const existing = normalizePlans(cur.plans).filter((x) => !(x.category === "General" && x.price === 0 && ["Starter", "Growth", "Premium", "Custom"].includes(x.name)));
+    const have = new Set(existing.map((x) => `${x.category}|${x.name}`.toLowerCase()));
+    const plans = [...existing, ...BROCHURE_PLANS.filter((x) => !have.has(`${x.category}|${x.name}`.toLowerCase()))];
+    const services = Array.isArray(cur.services) ? (cur.services as string[]) : [...DEFAULT_SETTINGS.services];
+    for (const sv of EXTRA_SERVICES) if (!services.includes(sv)) services.push(sv);
+    await p.query("UPDATE gv_settings SET value = $1::jsonb WHERE key = 'settings'", [JSON.stringify({ ...DEFAULT_SETTINGS, ...cur, plans, services })]);
+    await p.query("INSERT INTO gv_settings (key, value) VALUES ('migration_brochure_plans_v1', 'true'::jsonb) ON CONFLICT DO NOTHING");
   }
 }
 

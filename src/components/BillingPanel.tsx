@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, FileText, Mail, Pencil, Plus, Send, Trash2, MessageCircle } from "lucide-react";
+import { Download, FileText, Pencil, Plus, Send, Trash2, MessageCircle } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { PAY_MODES, Payment, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, StatCard, Td, Th } from "./ui";
-import { fmtDate, inr, mailLink, planDecided, todayISO, waLink } from "@/lib/format";
+import { fmtDate, inr, planDecided, todayISO, waLink } from "@/lib/format";
+import EmailSender from "./EmailSender";
 import { fullBillPDF, paymentInvoicePDF } from "@/lib/pdf";
 
 type SendTarget = { kind: "payment"; payment: Payment } | { kind: "full" };
@@ -62,8 +63,8 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
 
   const sendMsg = (t: SendTarget) =>
     t.kind === "payment"
-      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\n${decided ? `Total package: ${inr(c.totalBilling)}\nBalance due: ${inr(c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0))}` : "This has been recorded as an advance. Your plan and final amount will be confirmed soon."}\n\nThank you,\n${db.company.name}`
-      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\n${decided ? `Total billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(bal)}` : `Advance received: ${inr(paid)}\nPlan and final amount: to be decided`}\n\nThank you,\n${db.company.name}`;
+      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\n${decided ? `Total package: ${inr(c.totalBilling)}\nBalance due: ${inr(Math.max(0, c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0)))}` : "This has been recorded as an advance. Your plan and final amount will be confirmed soon."}\n\nThank you,\n${db.company.name}`
+      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\n${decided ? `Total billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(Math.max(0, bal))}` : `Advance received: ${inr(paid)}\nPlan and final amount: to be decided`}\n\nThank you,\n${db.company.name}`;
 
   const download = (t: SendTarget) => (t.kind === "payment" ? paymentInvoicePDF(db, t.payment) : fullBillPDF(db, clientId));
 
@@ -94,7 +95,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
           <>
             <StatCard label="Total billing" value={inr(c.totalBilling)} hint={[c.plan, c.billingCycle].filter(Boolean).join(" · ") || undefined} />
             <StatCard label="Total received" value={inr(paid)} tone="good" />
-            <StatCard label="Balance pending" value={inr(bal)} tone={bal > 0 ? "bad" : "good"} hint={bal <= 0 ? "Fully paid" : undefined} />
+            <StatCard label="Balance pending" value={inr(Math.max(0, bal))} tone={bal > 0 ? "bad" : "good"} hint={bal < 0 ? `Fully paid · ${inr(-bal)} extra received` : bal === 0 ? "Fully paid" : undefined} />
           </>
         ) : (
           <>
@@ -186,24 +187,27 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         )}
       </Modal>
 
-      <Modal open={!!send} onClose={() => setSend(null)} title={send?.kind === "payment" ? `Send invoice · ${send.payment.invoiceNo}` : "Send full bill"}>
+      <Modal wide open={!!send} onClose={() => setSend(null)} title={send?.kind === "payment" ? `Send invoice · ${send.payment.invoiceNo}` : "Send full bill"}>
         {send && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              The PDF will download and WhatsApp/Email will open with this message. Attach the downloaded PDF there and send.
-            </p>
-            <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 font-sans text-xs text-slate-700">{sendMsg(send)}</pre>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <EmailSender
+              key={send.kind === "payment" ? send.payment.id : "full"}
+              client={c}
+              subject={send.kind === "payment" ? `Invoice ${send.payment.invoiceNo} - ${db.company.name}` : `Your bill - ${db.company.name}`}
+              message={sendMsg(send)}
+              logLabel={send.kind === "payment" ? `Invoice ${send.payment.invoiceNo}` : "Full bill"}
+              makePdf={() => (send.kind === "payment" ? paymentInvoicePDF(db, send.payment, "base64") : fullBillPDF(db, clientId, "base64"))}
+            />
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Or share another way</p>
+            <div className="grid gap-2 sm:grid-cols-2">
               <Button variant="whatsapp" onClick={() => { download(send); window.open(waLink(c.whatsapp || c.phone, sendMsg(send)), "_blank"); }}>
                 <MessageCircle size={16} /> WhatsApp
               </Button>
-              <Button variant="secondary" onClick={() => { download(send); window.location.href = mailLink(c.email, send.kind === "payment" ? `Invoice ${send.payment.invoiceNo} - ${db.company.name}` : `Full Bill - ${db.company.name}`, sendMsg(send)); }} disabled={!c.email}>
-                <Mail size={16} /> Email
-              </Button>
               <Button variant="secondary" onClick={() => download(send)}>
-                <Download size={16} /> PDF only
+                <Download size={16} /> Download PDF
               </Button>
             </div>
+            <p className="text-xs text-slate-500">WhatsApp: the PDF downloads and WhatsApp opens with the message. Attach the PDF there and send.</p>
           </div>
         )}
       </Modal>
