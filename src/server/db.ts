@@ -53,6 +53,16 @@ async function createSchema() {
      ON CONFLICT (key) DO NOTHING`,
     [JSON.stringify(DEFAULT_COMPANY), JSON.stringify(DEFAULT_SETTINGS)]
   );
+  // One-time update: add GMB to the services list of existing installs
+  const done = await p.query("SELECT 1 FROM gv_settings WHERE key = 'migration_gmb'");
+  if (!done.rowCount) {
+    await p.query(
+      `UPDATE gv_settings
+         SET value = jsonb_set(value, '{services}', (value->'services') || '["GMB"]'::jsonb)
+       WHERE key = 'settings' AND NOT (value->'services' ? 'GMB')`
+    );
+    await p.query("INSERT INTO gv_settings (key, value) VALUES ('migration_gmb', 'true'::jsonb) ON CONFLICT DO NOTHING");
+  }
 }
 
 export async function db() {

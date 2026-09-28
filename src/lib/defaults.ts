@@ -11,7 +11,7 @@ export const DEFAULT_COMPANY: Company = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  services: ["SEO", "Social Media", "Meta Ads", "Google Ads", "Website", "Branding", "Content"],
+  services: ["SEO", "GMB", "Social Media", "Meta Ads", "Google Ads", "Website", "Branding", "Content"],
   leadSources: ["Instagram", "Facebook", "Referral", "Website", "Call", "Google"],
   expenseCategories: ["Ads", "Tools / Software", "Salary / Freelancer", "Office", "Travel", "Equipment", "Other"],
   invoicePrefix: "GV-",
