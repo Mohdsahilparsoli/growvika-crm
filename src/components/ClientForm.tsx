@@ -198,13 +198,6 @@ export default function ClientForm({
       </div>
       {isAdmin && (
         <>
-          <Field label="Assigned to">
-            <Select
-              value={c.assignedTo}
-              onChange={(e) => set("assignedTo", e.target.value)}
-              options={db.users.filter((u) => u.active).map((u) => ({ value: u.id, label: u.name }))}
-            />
-          </Field>
           {db.company.gst && <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
             <input type="checkbox" checked={c.gstApplicable} onChange={(e) => set("gstApplicable", e.target.checked)} className="h-4 w-4 accent-brand-500" />
             Add GST ({db.settings.gstRate}%) to invoices

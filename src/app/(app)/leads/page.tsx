@@ -43,7 +43,7 @@ export default function LeadsPage() {
 
   const convert = (l: Lead) => {
     const id = uid("c");
-    const base = emptyClient(l.assignedTo);
+    const base = emptyClient(user!.id);
     update((d) => ({
       ...d,
       clients: [...d.clients, { ...base, id, name: l.name, business: l.business, phone: l.phone, whatsapp: l.phone, services: l.service ? [l.service] : [], notes: l.note }],
