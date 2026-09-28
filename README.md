@@ -1,36 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Growvika CRM
 
-## Getting Started
+Growvika ka personal client management software (demo). Next.js + Tailwind. Data browser ke localStorage mein save hota hai.
 
-First, run the development server:
+## Modules
+1. **Team Login** – Admin aur Employee roles
+2. **Dashboard** – kamai, pending payments, bacha hua amount, aaj ke follow-ups, charts
+3. **Client Profile** – contact, GST, services, notes
+4. **Leads Pipeline** – drag & drop stages, follow-ups, lead ko ek click mein client banana
+5. **Billing** – har payment ki history, har payment ka alag invoice PDF, "Download Full Bill" PDF, WhatsApp/Email send
+6. **Communication History** – calls, meetings, WhatsApp, files ka record
+7. **Company Account** – kitna aaya, kahan aur kyun kharch hua, kitna bacha, report PDF
 
+## Demo logins
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@growvika.com | admin123 |
+| Employee | riya@growvika.com | riya123 |
+
+## Chalana
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> Note: Ye demo hai. Data sirf usi browser mein save hota hai (localStorage). Real use ke liye database (jaise Supabase/Postgres) aur proper authentication lagana hoga.
