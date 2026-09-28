@@ -130,7 +130,7 @@ function signature(doc: jsPDF, db: DB) {
   doc.text("Authorised Signature", x + boxW / 2, bottom - 5, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...MUTED);
-  doc.text(`For ${db.company.name}`, x + boxW / 2, bottom - 1, { align: "center" });
+  doc.text(`of ${db.company.name}`, x + boxW / 2, bottom - 1, { align: "center" });
   doc.setTextColor(...DARK);
 }
 
