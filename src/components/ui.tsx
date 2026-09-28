@@ -186,3 +186,21 @@ export function Th({ children, right }: { children?: ReactNode; right?: boolean 
 export function Td({ children, right, className = "" }: { children?: ReactNode; right?: boolean; className?: string }) {
   return <td className={`px-4 py-3 text-sm text-slate-700 ${right ? "whitespace-nowrap text-right tabular-nums" : ""} ${className}`}>{children}</td>;
 }
+
+export function PhoneInput({ value, onChange, className = "" }: { value: string; onChange: (v: string) => void; className?: string }) {
+  return (
+    <div className={`flex w-full overflow-hidden rounded-lg border border-slate-300 bg-white focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 ${className}`}>
+      <span className="flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">+91-</span>
+      <input
+        value={value}
+        onChange={(e) => {
+          const d = e.target.value.replace(/\D/g, "");
+          onChange(d.length > 10 && (d.startsWith("91") || d.startsWith("0")) ? d.slice(d.length - 10) : d.slice(0, 10));
+        }}
+        inputMode="numeric"
+        placeholder="10-digit mobile number"
+        className="w-full bg-white px-3 py-2 text-sm text-slate-900 outline-none"
+      />
+    </div>
+  );
+}

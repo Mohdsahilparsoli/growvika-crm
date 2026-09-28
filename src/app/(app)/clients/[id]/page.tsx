@@ -9,7 +9,7 @@ import { Badge, Button, Card, Empty, Field, Input, Modal, Select, Textarea } fro
 import ClientForm from "@/components/ClientForm";
 import BillingPanel from "@/components/BillingPanel";
 import { COMM_TYPES, Comm, CommType } from "@/lib/types";
-import { clientBalance, fmtDate, inr, paidFor, planDecided, statusTone, todayISO, waLink } from "@/lib/format";
+import { formatPhone, telLink, clientBalance, fmtDate, inr, paidFor, planDecided, statusTone, todayISO, waLink } from "@/lib/format";
 
 type Tab = "profile" | "billing" | "comms";
 
@@ -94,7 +94,7 @@ export default function ClientDetail() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href={`tel:${c.phone}`}><Button variant="secondary"><Phone size={16} /> Call</Button></a>
+            <a href={telLink(c.phone)}><Button variant="secondary"><Phone size={16} /> Call</Button></a>
             <a href={waLink(c.whatsapp || c.phone, `Hello ${c.name},`)} target="_blank" rel="noreferrer">
               <Button variant="whatsapp"><MessageCircle size={16} /> WhatsApp</Button>
             </a>
@@ -126,8 +126,8 @@ export default function ClientDetail() {
                 {[
                   ["Client name", c.name],
                   ["Business", c.business],
-                  ["Phone", c.phone],
-                  ["WhatsApp", c.whatsapp || c.phone],
+                  ["Phone", formatPhone(c.phone)],
+                  ["WhatsApp", formatPhone(c.whatsapp || c.phone)],
                   ["Email", c.email || "—"],
                   ["GST number", c.gst || "—"],
                   ["Address", [c.address, c.city, c.state].filter(Boolean).join(", ") || "—"],

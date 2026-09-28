@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { CalendarClock, ChevronLeft, ChevronRight, Phone, Plus, UserPlus, Trash2 } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { LEAD_STAGES, Lead, LeadStage } from "@/lib/types";
-import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Textarea, PhoneInput } from "@/components/ui";
 import { emptyClient } from "@/components/ClientForm";
-import { fmtDate, todayISO } from "@/lib/format";
+import { fmtDate, todayISO, normalizePhone, telLink } from "@/lib/format";
 
 const stageStyle: Record<LeadStage, string> = {
   "New Lead": "border-t-sky-500",
@@ -56,7 +56,8 @@ export default function LeadsPage() {
     e.preventDefault();
     if (!form) return;
     if (!form.name.trim()) return setErr("Enter the lead's name");
-    if (!/^\d{10}$/.test(form.phone.replace(/\D/g, ""))) return setErr("Enter a valid 10-digit phone number");
+    if (!/^\d{10}$/.test(normalizePhone(form.phone))) return setErr("Enter a valid 10-digit phone number");
+    form.phone = normalizePhone(form.phone);
     if (form.id) update((d) => ({ ...d, leads: d.leads.map((x) => (x.id === form.id ? form : x)) }));
     else update((d) => ({ ...d, leads: [...d.leads, { ...form, id: uid("l") }] }));
     setForm(null);
@@ -132,7 +133,7 @@ export default function LeadsPage() {
                         <div className="flex gap-1">
                           <button disabled={idx === 0} onClick={() => move(l, LEAD_STAGES[idx - 1])} className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30" aria-label="Previous stage"><ChevronLeft size={16} /></button>
                           <button disabled={idx === LEAD_STAGES.length - 1} onClick={() => move(l, LEAD_STAGES[idx + 1])} className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30" aria-label="Next stage"><ChevronRight size={16} /></button>
-                          <a href={`tel:${l.phone}`} className="rounded p-1 text-slate-400 hover:bg-slate-100" aria-label="Call"><Phone size={15} /></a>
+                          <a href={telLink(l.phone)} className="rounded p-1 text-slate-400 hover:bg-slate-100" aria-label="Call"><Phone size={15} /></a>
                         </div>
                         {(stage === "Proposal Sent" || stage === "Won") && !l.note.includes("Converted to client") && (
                           <button onClick={() => convert(l)} className="flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100">
@@ -154,7 +155,7 @@ export default function LeadsPage() {
           <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
             <Field label="Name *"><Input value={form.name} onChange={(e) => { setErr(""); setForm({ ...form, name: e.target.value }); }} autoFocus /></Field>
             <Field label="Business"><Input value={form.business} onChange={(e) => setForm({ ...form, business: e.target.value })} /></Field>
-            <Field label="Phone *"><Input value={form.phone} onChange={(e) => { setErr(""); setForm({ ...form, phone: e.target.value }); }} inputMode="numeric" /></Field>
+            <Field label="Phone *"><PhoneInput value={normalizePhone(form.phone)} onChange={(v) => { setErr(""); setForm({ ...form, phone: v }); }} /></Field>
             <Field label="Source"><Select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={Array.from(new Set([...db.settings.leadSources, form.source].filter(Boolean)))} /></Field>
             <Field label="Interested in"><Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} options={Array.from(new Set([...db.settings.services, form.service].filter(Boolean)))} /></Field>
             <Field label="Stage"><Select value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as LeadStage })} options={LEAD_STAGES} /></Field>

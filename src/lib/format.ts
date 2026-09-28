@@ -110,3 +110,16 @@ export const formatPhone = (phone: string) => {
   if (digits.length === 11 && digits.startsWith("0")) return `+91-${digits.slice(1)}`;
   return raw;
 };
+
+// Keep only the 10-digit Indian mobile number (drops +91, 91 or a leading 0)
+export const normalizePhone = (phone: string) => {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
+  return digits;
+};
+
+export const telLink = (phone: string) => {
+  const n = normalizePhone(phone);
+  return n.length === 10 ? `tel:+91${n}` : `tel:${phone}`;
+};

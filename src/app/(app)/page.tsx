@@ -5,7 +5,7 @@ import { Users, TrendingUp, Clock, Wallet, Target, PhoneCall } from "lucide-reac
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useStore } from "@/lib/store";
 import { Badge, Card, PageHeader, StatCard, Empty } from "@/components/ui";
-import { paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
+import { formatPhone, telLink, paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
 
 export default function Dashboard() {
   const { db, user, isAdmin, userName } = useStore();
@@ -88,7 +88,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     {l.followUp < today && <Badge tone="red">Overdue · {fmtDate(l.followUp)}</Badge>}
-                    <a href={`tel:${l.phone}`} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">Call {l.phone}</a>
+                    <a href={telLink(l.phone)} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">Call {formatPhone(l.phone)}</a>
                   </div>
                 </li>
               ))}

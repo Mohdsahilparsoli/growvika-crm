@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { BILLING_CYCLES, Client, ClientStatus } from "@/lib/types";
-import { inr } from "@/lib/format";
+import { inr, normalizePhone } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import { Button, Field, Input, Select, Textarea } from "./ui";
+import { Button, Field, Input, Select, Textarea, PhoneInput } from "./ui";
 import { todayISO } from "@/lib/format";
 
 export const emptyClient = (assignedTo: string): Client => ({
@@ -74,8 +74,11 @@ export default function ClientForm({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!c.name.trim() || !c.business.trim()) return setErr("Client name and business name are required");
-    if (!/^\d{10}$/.test(c.phone.replace(/\D/g, ""))) return setErr("Enter a valid 10-digit phone number");
-    onSave({ ...c, whatsapp: c.whatsapp || c.phone });
+    const phone = normalizePhone(c.phone);
+    const whatsapp = normalizePhone(c.whatsapp) || phone;
+    if (!/^\d{10}$/.test(phone)) return setErr("Enter a valid 10-digit phone number");
+    if (whatsapp && !/^\d{10}$/.test(whatsapp)) return setErr("Enter a valid 10-digit WhatsApp number");
+    onSave({ ...c, phone, whatsapp });
   };
 
   return (
@@ -87,10 +90,10 @@ export default function ClientForm({
         <Input value={c.business} onChange={(e) => set("business", e.target.value)} />
       </Field>
       <Field label="Phone *">
-        <Input value={c.phone} onChange={(e) => set("phone", e.target.value)} inputMode="numeric" />
+        <PhoneInput value={normalizePhone(c.phone)} onChange={(v) => set("phone", v)} />
       </Field>
       <Field label="WhatsApp (leave blank to use phone)">
-        <Input value={c.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} inputMode="numeric" />
+        <PhoneInput value={normalizePhone(c.whatsapp)} onChange={(v) => set("whatsapp", v)} />
       </Field>
       <Field label="Email">
         <Input type="email" value={c.email} onChange={(e) => set("email", e.target.value)} />

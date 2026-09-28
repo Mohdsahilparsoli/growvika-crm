@@ -96,7 +96,7 @@ function billTo(doc: jsPDF, c: Client, y: number) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   const addr = [c.address, c.city, c.state].filter(Boolean).join(", ");
-  const contact = [c.phone ? `Phone: ${c.phone}` : "", c.email].filter(Boolean).join("  |  ");
+  const contact = [c.phone ? `Phone: ${formatPhone(c.phone)}` : "", c.email].filter(Boolean).join("  |  ");
   const lines = [c.name, addr, contact].filter(Boolean);
   if (c.gst) lines.push(`GSTIN: ${c.gst}`);
   lines.forEach((l, i) => doc.text(l, 14, y + 12 + i * 5));

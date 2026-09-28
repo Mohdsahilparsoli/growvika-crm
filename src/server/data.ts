@@ -2,6 +2,7 @@ import "server-only";
 import { db, deleteRecord, deleteWhere, getRecord, getSetting, listRecords, nextInvoiceNumber, putRecord } from "./db";
 import { SessionUser } from "./auth";
 import { DEFAULT_COMPANY, DEFAULT_SETTINGS, normalizePlans } from "@/lib/defaults";
+import { normalizePhone } from "@/lib/format";
 import { Client, Comm, Company, DB, Expense, Lead, Payment, Settings, User } from "@/lib/types";
 
 export const COLLECTIONS = ["clients", "payments", "leads", "comms", "expenses"] as const;
@@ -29,8 +30,8 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
         id,
         name: str(raw.name, 200),
         business: str(raw.business, 200),
-        phone: str(raw.phone, 20),
-        whatsapp: str(raw.whatsapp, 20),
+        phone: normalizePhone(str(raw.phone, 20)),
+        whatsapp: normalizePhone(str(raw.whatsapp, 20)),
         email: str(raw.email, 200),
         address: str(raw.address, 500),
         city: str(raw.city, 100),
@@ -72,7 +73,7 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
         id,
         name: str(raw.name, 200),
         business: str(raw.business, 200),
-        phone: str(raw.phone, 20),
+        phone: normalizePhone(str(raw.phone, 20)),
         source: str(raw.source, 100),
         service: str(raw.service, 100),
         stage: pick(raw.stage, ["New Lead", "Contacted", "Meeting Done", "Proposal Sent", "Won", "Lost"] as const, "New Lead"),
