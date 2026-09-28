@@ -31,8 +31,8 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
-    if (!form.amount || form.amount <= 0) return setErr("Sahi amount daalein");
-    if (!form.date) return setErr("Date chunein");
+    if (!form.amount || form.amount <= 0) return setErr("Enter a valid amount");
+    if (!form.date) return setErr("Pick a date");
     if (form.id) {
       update((d) => ({ ...d, payments: d.payments.map((p) => (p.id === form.id ? form : p)) }));
       setForm(null);
@@ -49,15 +49,15 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
   };
 
   const del = (p: Payment) => {
-    if (confirm(`${p.invoiceNo} (${inr(p.amount)}) delete karna hai?`)) {
+    if (confirm(`Delete ${p.invoiceNo} (${inr(p.amount)})?`)) {
       update((d) => ({ ...d, payments: d.payments.filter((x) => x.id !== p.id) }));
     }
   };
 
   const sendMsg = (t: SendTarget) =>
     t.kind === "payment"
-      ? `Namaste ${c.name} ji,\n\nAapka ${inr(t.payment.amount)} ka payment (${t.payment.mode}, ${fmtDate(t.payment.date)}) receive ho gaya hai. Invoice No. ${t.payment.invoiceNo} attach hai.\n\nTotal package: ${inr(c.totalBilling)}\nBalance: ${inr(c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0))}\n\nDhanyavaad,\n${db.company.name}`
-      : `Namaste ${c.name} ji,\n\nAapka ab tak ka poora bill attach hai.\n\nTotal billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance: ${inr(bal)}\n\nDhanyavaad,\n${db.company.name}`;
+      ? `Hello ${c.name},\n\nWe have received your payment of ${inr(t.payment.amount)} (${t.payment.mode}, ${fmtDate(t.payment.date)}). Please find invoice ${t.payment.invoiceNo} attached.\n\nTotal package: ${inr(c.totalBilling)}\nBalance due: ${inr(c.totalBilling - db.payments.filter((p) => p.clientId === c.id && (p.date < t.payment.date || (p.date === t.payment.date && p.invoiceNo <= t.payment.invoiceNo))).reduce((s, p) => s + p.amount, 0))}\n\nThank you,\n${db.company.name}`
+      : `Hello ${c.name},\n\nPlease find your complete bill to date attached.\n\nTotal billing: ${inr(c.totalBilling)}\nTotal received: ${inr(paid)}\nBalance due: ${inr(bal)}\n\nThank you,\n${db.company.name}`;
 
   const download = (t: SendTarget) => (t.kind === "payment" ? paymentInvoicePDF(db, t.payment) : fullBillPDF(db, clientId));
 
@@ -67,7 +67,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         <div>
           <p className="font-medium text-slate-900">{c.business} · Billing</p>
           <p className="text-xs text-slate-500">
-            {pays.length} payments · {c.gstApplicable ? "GST invoice (18%)" : "Bina GST"}
+            {pays.length} payments · {c.gstApplicable ? "GST invoice (18%)" : "No GST"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -94,7 +94,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
           <h3 className="font-medium text-slate-900">Billing history</h3>
         </div>
         {pays.length === 0 ? (
-          <Empty text="Abhi tak koi payment nahi. 'Add Payment' se pehli payment jodein." />
+          <Empty text="No payments yet. Use 'Add Payment' to record the first one." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px]">
@@ -118,7 +118,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                     <Td right className="font-semibold text-slate-900">{inr(p.amount)}</Td>
                     <Td right>
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="secondary" onClick={() => paymentInvoicePDF(db, p)} title="PDF download">
+                        <Button size="sm" variant="secondary" onClick={() => paymentInvoicePDF(db, p)} title="Download PDF">
                           <FileText size={14} /> PDF
                         </Button>
                         <Button size="sm" variant="secondary" onClick={() => setSend({ kind: "payment", payment: p })} title="Send">
@@ -140,7 +140,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         )}
       </Card>
 
-      <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? `Payment edit · ${form.invoiceNo}` : "Nayi payment add karein"}>
+      <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? `Edit payment · ${form.invoiceNo}` : "Add a payment"}>
         {form && (
           <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
             <Field label="Date">
@@ -153,12 +153,12 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
               <Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as PayMode })} options={PAY_MODES} />
             </Field>
             <Field label="Note">
-              <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Jaise: 2nd installment" />
+              <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. 2nd installment" />
             </Field>
             {!form.id && (
               <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 sm:col-span-2">
-                Invoice number apne aap banega: <b>GV-{String(db.invoiceCounter + 1).padStart(4, "0")}</b> · Abhi baaki: {inr(bal)}
-                {form.amount > bal && bal > 0 && <span className="ml-1 text-amber-600">(amount baaki se zyada hai)</span>}
+                Invoice number will be: <b>GV-{String(db.invoiceCounter + 1).padStart(4, "0")}</b> · Currently due: {inr(bal)}
+                {form.amount > bal && bal > 0 && <span className="ml-1 text-amber-600">(more than the amount due)</span>}
               </p>
             )}
             {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
@@ -170,11 +170,11 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         )}
       </Modal>
 
-      <Modal open={!!send} onClose={() => setSend(null)} title={send?.kind === "payment" ? `Invoice bhejein · ${send.payment.invoiceNo}` : "Full bill bhejein"}>
+      <Modal open={!!send} onClose={() => setSend(null)} title={send?.kind === "payment" ? `Send invoice · ${send.payment.invoiceNo}` : "Send full bill"}>
         {send && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Button dabane par PDF download hoga aur WhatsApp/Email message ke saath khulega. Wahan downloaded PDF attach karke bhej dein.
+              The PDF will download and WhatsApp/Email will open with this message. Attach the downloaded PDF there and send.
             </p>
             <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 font-sans text-xs text-slate-700">{sendMsg(send)}</pre>
             <div className="grid gap-2 sm:grid-cols-3">
@@ -185,7 +185,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                 <Mail size={16} /> Email
               </Button>
               <Button variant="secondary" onClick={() => download(send)}>
-                <Download size={16} /> Sirf PDF
+                <Download size={16} /> PDF only
               </Button>
             </div>
           </div>

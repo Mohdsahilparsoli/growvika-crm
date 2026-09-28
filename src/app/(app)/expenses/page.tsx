@@ -39,9 +39,9 @@ export default function ExpensesPage() {
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
-    if (!form.amount || form.amount <= 0) return setErr("Sahi amount daalein");
-    if (!form.where.trim()) return setErr("Kahan kharch kiya, wo likhein");
-    if (!form.why.trim()) return setErr("Kyun kharch kiya, wo likhein");
+    if (!form.amount || form.amount <= 0) return setErr("Enter a valid amount");
+    if (!form.where.trim()) return setErr("Enter where the money was spent");
+    if (!form.why.trim()) return setErr("Enter why the money was spent");
     if (form.id) update((d) => ({ ...d, expenses: d.expenses.map((x) => (x.id === form.id ? form : x)) }));
     else update((d) => ({ ...d, expenses: [...d.expenses, { ...form, id: uid("e") }] }));
     setForm(null);
@@ -51,7 +51,7 @@ export default function ExpensesPage() {
     <div>
       <PageHeader
         title="Company Account"
-        subtitle="Kitna aaya, kahan aur kyun kharch hua, kitna bacha"
+        subtitle="What came in, where and why it was spent, and what's left"
         actions={
           <>
             <Select value={range} onChange={(e) => setRange(e.target.value as RangeKey)} options={(Object.keys(RANGE_LABELS) as RangeKey[]).map((k) => ({ value: k, label: RANGE_LABELS[k] }))} className="w-44" />
@@ -59,20 +59,20 @@ export default function ExpensesPage() {
               <Download size={16} /> Report PDF
             </Button>
             <Button onClick={() => { setErr(""); setForm({ id: "", date: todayISO(), amount: 0, where: "", why: "", category: "Ads", mode: "UPI", note: "" }); }}>
-              <Plus size={16} /> Kharcha add karein
+              <Plus size={16} /> Add expense
             </Button>
           </>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total aaya" value={inr(income)} tone="good" hint={`${RANGE_LABELS[range]} · clients ki payments`} icon={<TrendingUp size={18} />} />
-        <StatCard label="Total kharcha" value={inr(spent)} tone="bad" hint={`${inPeriod.length} entries`} icon={<TrendingDown size={18} />} />
+        <StatCard label="Total income" value={inr(income)} tone="good" hint={`${RANGE_LABELS[range]} · client payments`} icon={<TrendingUp size={18} />} />
+        <StatCard label="Total expenses" value={inr(spent)} tone="bad" hint={`${inPeriod.length} entries`} icon={<TrendingDown size={18} />} />
         <StatCard
-          label="Bacha hua"
+          label="Balance left"
           value={inr(income - spent)}
           tone={income - spent >= 0 ? "default" : "bad"}
-          hint={range === "all" ? "Aaya − Kharcha" : `Shuru se ab tak: ${inr(allTimeBacha)}`}
+          hint={range === "all" ? "Income − Expenses" : `All time: ${inr(allTimeBacha)}`}
           icon={<Wallet size={18} />}
         />
       </div>
@@ -80,8 +80,8 @@ export default function ExpensesPage() {
       {income > 0 && (
         <Card className="mt-4 p-4">
           <div className="flex justify-between text-xs text-slate-500">
-            <span>Aaye hue paise mein se kitna kharch hua</span>
-            <span className="font-medium text-slate-700">{Math.round((spent / income) * 100)}% kharch · {Math.max(0, 100 - Math.round((spent / income) * 100))}% bacha</span>
+            <span>How much of the income has been spent</span>
+            <span className="font-medium text-slate-700">{Math.round((spent / income) * 100)}% spent · {Math.max(0, 100 - Math.round((spent / income) * 100))}% left</span>
           </div>
           <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-emerald-100">
             <div className="h-3 bg-red-400" style={{ width: `${Math.min(100, (spent / income) * 100)}%` }} />
@@ -91,9 +91,9 @@ export default function ExpensesPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card className="p-5">
-          <h3 className="font-medium text-slate-900">Paisa kahan ja raha hai</h3>
-          <p className="text-xs text-slate-500">Category-wise kharcha</p>
-          {byCat.length === 0 ? <Empty text="Koi kharcha nahi" /> : (
+          <h3 className="font-medium text-slate-900">Where the money goes</h3>
+          <p className="text-xs text-slate-500">Expenses by category</p>
+          {byCat.length === 0 ? <Empty text="No expenses" /> : (
             <>
               <div className="mt-2 h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -124,18 +124,18 @@ export default function ExpensesPage() {
 
         <Card className="overflow-hidden lg:col-span-2">
           <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
-            <h3 className="mr-auto font-medium text-slate-900">Kharche ki details {cat !== "All" && <Badge tone="purple">{cat}</Badge>}</h3>
+            <h3 className="mr-auto font-medium text-slate-900">Expense details {cat !== "All" && <Badge tone="purple">{cat}</Badge>}</h3>
             <div className="relative w-full sm:w-56">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search kahan / kyun" className="py-1.5 pl-8" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search where / why" className="py-1.5 pl-8" />
             </div>
-            <Select value={cat} onChange={(e) => setCat(e.target.value)} options={[{ value: "All", label: "Saari categories" }, ...EXPENSE_CATEGORIES]} className="w-full py-1.5 sm:w-44" />
+            <Select value={cat} onChange={(e) => setCat(e.target.value)} options={[{ value: "All", label: "All categories" }, ...EXPENSE_CATEGORIES]} className="w-full py-1.5 sm:w-44" />
           </div>
-          {list.length === 0 ? <Empty text="Koi entry nahi mili" /> : (
+          {list.length === 0 ? <Empty text="No entries found" /> : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px]">
                 <thead className="bg-slate-50">
-                  <tr><Th>Date</Th><Th>Kahan kharch kiya</Th><Th>Kyun kiya</Th><Th>Category</Th><Th right>Amount</Th></tr>
+                  <tr><Th>Date</Th><Th>Where</Th><Th>Why</Th><Th>Category</Th><Th right>Amount</Th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {list.map((e) => (
@@ -154,23 +154,23 @@ export default function ExpensesPage() {
         </Card>
       </div>
 
-      <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? "Kharcha ki detail" : "Naya kharcha"}>
+      <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? "Expense details" : "New expense"}>
         {form && (
           <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
             <Field label="Date"><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
             <Field label="Amount (₹) *"><Input type="number" min={1} value={form.amount || ""} onChange={(e) => { setErr(""); setForm({ ...form, amount: Number(e.target.value) }); }} autoFocus={!form.id} /></Field>
-            <Field label="Kahan kharch kiya *" full><Input value={form.where} onChange={(e) => { setErr(""); setForm({ ...form, where: e.target.value }); }} placeholder="Jaise: Meta Ads, Canva Pro, freelancer" /></Field>
-            <Field label="Kyun kiya *" full><Textarea value={form.why} onChange={(e) => { setErr(""); setForm({ ...form, why: e.target.value }); }} placeholder="Jaise: Sharma Traders ke Diwali ads ke liye" /></Field>
+            <Field label="Where was it spent *" full><Input value={form.where} onChange={(e) => { setErr(""); setForm({ ...form, where: e.target.value }); }} placeholder="e.g. Meta Ads, Canva Pro, freelancer" /></Field>
+            <Field label="Why was it spent *" full><Textarea value={form.why} onChange={(e) => { setErr(""); setForm({ ...form, why: e.target.value }); }} placeholder="e.g. Diwali ads for Sharma Traders" /></Field>
             <Field label="Category"><Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} options={EXPENSE_CATEGORIES} /></Field>
             <Field label="Payment mode"><Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as PayMode })} options={PAY_MODES} /></Field>
-            <Field label="Bill / receipt photo (demo mein sirf naam save hoga)" full>
+            <Field label="Bill / receipt photo (demo saves the file name only)" full>
               <Input type="file" accept="image/*,.pdf" onChange={(e) => setForm({ ...form, note: e.target.files?.[0]?.name ? `Bill: ${e.target.files[0].name}` : form.note })} />
             </Field>
             <Field label="Note" full><Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
             {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
             <div className="flex justify-between gap-2 sm:col-span-2">
               {form.id ? (
-                <Button type="button" variant="danger" onClick={() => { if (confirm("Ye kharcha delete karna hai?")) { update((d) => ({ ...d, expenses: d.expenses.filter((x) => x.id !== form.id) })); setForm(null); } }}>
+                <Button type="button" variant="danger" onClick={() => { if (confirm("Delete this expense?")) { update((d) => ({ ...d, expenses: d.expenses.filter((x) => x.id !== form.id) })); setForm(null); } }}>
                   <Trash2 size={14} /> Delete
                 </Button>
               ) : <span />}

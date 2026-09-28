@@ -21,10 +21,10 @@ export default function TeamPage() {
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
-    if (!form.name.trim()) return setErr("Naam daalein");
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return setErr("Sahi email daalein");
-    if (form.password.length < 4) return setErr("Password kam se kam 4 characters ka ho");
-    if (db.users.some((u) => u.email.toLowerCase() === form.email.toLowerCase() && u.id !== form.id)) return setErr("Ye email pehle se hai");
+    if (!form.name.trim()) return setErr("Enter a name");
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) return setErr("Enter a valid email");
+    if (form.password.length < 4) return setErr("Password must be at least 4 characters");
+    if (db.users.some((u) => u.email.toLowerCase() === form.email.toLowerCase() && u.id !== form.id)) return setErr("This email is already in use");
     if (form.id) update((d) => ({ ...d, users: d.users.map((u) => (u.id === form.id ? form : u)) }));
     else update((d) => ({ ...d, users: [...d.users, { ...form, id: uid("u") }] }));
     setForm(null);
@@ -35,7 +35,7 @@ export default function TeamPage() {
     if (u.active) {
       const others = db.users.filter((x) => x.id !== u.id && x.active);
       const to = prompt(
-        `${u.name} ka login band karna hai. Uske clients/leads kisko dene hain?\n${others.map((o, i) => `${i + 1}. ${o.name}`).join("\n")}\n\nNumber likhein:`,
+        `Deactivate ${u.name}? Who should take over their clients and leads?\n${others.map((o, i) => `${i + 1}. ${o.name}`).join("\n")}\n\nEnter a number:`,
         "1"
       );
       if (to === null) return;
@@ -55,7 +55,7 @@ export default function TeamPage() {
     <div>
       <PageHeader
         title="Team & Settings"
-        subtitle="Team ke logins aur company ki details (invoice par dikhti hain)"
+        subtitle="Team logins and company details (shown on invoices)"
         actions={<Button onClick={() => { setErr(""); setForm({ id: "", name: "", email: "", password: "", role: "employee", active: true }); }}><Plus size={16} /> Team member</Button>}
       />
 
@@ -63,7 +63,7 @@ export default function TeamPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-slate-50">
-              <tr><Th>Naam</Th><Th>Email</Th><Th>Role</Th><Th right>Clients</Th><Th right>Open leads</Th><Th right>Status</Th><Th right></Th></tr>
+              <tr><Th>Name</Th><Th>Email</Th><Th>Role</Th><Th right>Clients</Th><Th right>Open leads</Th><Th right>Status</Th><Th right></Th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {db.users.map((u) => {
@@ -77,7 +77,7 @@ export default function TeamPage() {
                     <Td right>{n.leads}</Td>
                     <Td right>
                       <button disabled={u.id === user!.id} onClick={() => toggle(u)} className="disabled:cursor-not-allowed">
-                        {u.active ? <Badge tone="green">Active</Badge> : <Badge tone="red">Band</Badge>}
+                        {u.active ? <Badge tone="green">Active</Badge> : <Badge tone="red">Inactive</Badge>}
                       </button>
                     </Td>
                     <Td right>
@@ -90,13 +90,13 @@ export default function TeamPage() {
           </table>
         </div>
         <p className="border-t border-slate-100 px-4 py-2.5 text-xs text-slate-500">
-          Employee sirf apne assigned clients aur leads dekh sakta hai. Billing, Company Account aur ye page sirf Admin ko dikhte hain. Status par click karke login band/chalu karein.
+          Employees only see their assigned clients and leads. Billing, Company Account and this page are admin-only. Click a status to activate or deactivate a login.
         </p>
       </Card>
 
       <Card className="mt-6 p-5">
         <h3 className="font-medium text-slate-900">Company details</h3>
-        <p className="text-xs text-slate-500">Ye details har invoice aur report PDF par aati hain</p>
+        <p className="text-xs text-slate-500">These details appear on every invoice and report PDF</p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -106,24 +106,24 @@ export default function TeamPage() {
           }}
           className="mt-4 grid gap-4 sm:grid-cols-2"
         >
-          <Field label="Company naam"><Input value={co.name} onChange={(e) => setCo({ ...co, name: e.target.value })} /></Field>
+          <Field label="Company name"><Input value={co.name} onChange={(e) => setCo({ ...co, name: e.target.value })} /></Field>
           <Field label="Tagline"><Input value={co.tagline} onChange={(e) => setCo({ ...co, tagline: e.target.value })} /></Field>
           <Field label="Address" full><Input value={co.address} onChange={(e) => setCo({ ...co, address: e.target.value })} /></Field>
           <Field label="Phone"><Input value={co.phone} onChange={(e) => setCo({ ...co, phone: e.target.value })} /></Field>
           <Field label="Email"><Input value={co.email} onChange={(e) => setCo({ ...co, email: e.target.value })} /></Field>
-          <Field label="GSTIN (khali chhodein agar GST nahi hai)"><Input value={co.gst} onChange={(e) => setCo({ ...co, gst: e.target.value.toUpperCase() })} /></Field>
+          <Field label="GSTIN (leave blank if not GST registered)"><Input value={co.gst} onChange={(e) => setCo({ ...co, gst: e.target.value.toUpperCase() })} /></Field>
           <div className="flex items-end justify-end gap-3">
-            {saved && <span className="text-sm text-emerald-600">Save ho gaya ✓</span>}
+            {saved && <span className="text-sm text-brand-600">Saved ✓</span>}
             <Button type="submit">Save details</Button>
           </div>
         </form>
       </Card>
 
-      <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? "Team member edit" : "Naya team member"}>
+      <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? "Edit team member" : "New team member"}>
         {form && (
           <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Naam"><Input value={form.name} onChange={(e) => { setErr(""); setForm({ ...form, name: e.target.value }); }} autoFocus /></Field>
-            <Field label="Email (login ke liye)"><Input type="email" value={form.email} onChange={(e) => { setErr(""); setForm({ ...form, email: e.target.value }); }} /></Field>
+            <Field label="Name"><Input value={form.name} onChange={(e) => { setErr(""); setForm({ ...form, name: e.target.value }); }} autoFocus /></Field>
+            <Field label="Email (used to log in)"><Input type="email" value={form.email} onChange={(e) => { setErr(""); setForm({ ...form, email: e.target.value }); }} /></Field>
             <Field label="Password"><Input value={form.password} onChange={(e) => { setErr(""); setForm({ ...form, password: e.target.value }); }} /></Field>
             <Field label="Role">
               <Select value={form.role} disabled={form.id === user!.id} onChange={(e) => setForm({ ...form, role: e.target.value as Role })} options={[{ value: "employee", label: "Employee" }, { value: "admin", label: "Admin" }]} />

@@ -52,10 +52,10 @@ export const inRange = (iso: string, range: RangeKey) => {
 };
 
 export const RANGE_LABELS: Record<RangeKey, string> = {
-  all: "Shuru se ab tak",
-  this: "Is mahine",
-  last: "Pichhle mahine",
-  year: "Is saal",
+  all: "All time",
+  this: "This month",
+  last: "Last month",
+  year: "This year",
 };
 
 export const waLink = (phone: string, text: string) => {

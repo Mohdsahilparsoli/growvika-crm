@@ -49,12 +49,10 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   const nav = (
     <nav className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-lg font-bold text-white">G</div>
-        <div>
-          <p className="text-base font-semibold leading-tight text-white">Growvika</p>
-          <p className="text-xs text-slate-400">Client Management</p>
-        </div>
+      <div className="px-6 pb-6 pt-7">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-white.png" alt="GrowVika" className="h-7 w-auto" />
+        <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Client Management</p>
       </div>
       <div className="flex-1 space-y-1 px-3">
         {items.map((n) => {
@@ -65,7 +63,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               key={n.href}
               href={n.href}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                active ? "bg-emerald-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                active ? "bg-brand-500 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
               }`}
             >
               <Icon size={18} />
@@ -74,7 +72,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           );
         })}
       </div>
-      <div className="space-y-2 border-t border-slate-800 p-4">
+      <div className="space-y-2 border-t border-white/10 p-4">
         <div className="px-1">
           <p className="truncate text-sm font-medium text-white">{user.name}</p>
           <p className="text-xs capitalize text-slate-400">{user.role}</p>
@@ -82,9 +80,9 @@ export default function Shell({ children }: { children: ReactNode }) {
         {isAdmin && (
           <button
             onClick={() => {
-              if (confirm("Demo data reset karna hai? Aapki saari entries hat jayengi.")) resetDemo();
+              if (confirm("Reset the demo data? All your entries will be removed.")) resetDemo();
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-slate-400 hover:bg-white/5 hover:text-white"
           >
             <RotateCcw size={14} /> Reset demo data
           </button>
@@ -94,9 +92,9 @@ export default function Shell({ children }: { children: ReactNode }) {
             logout();
             router.replace("/login");
           }}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
         >
-          <LogOut size={16} /> Logout
+          <LogOut size={16} /> Log out
         </button>
       </div>
     </nav>
@@ -104,14 +102,12 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 bg-slate-900 lg:block">{nav}</aside>
+      <aside className="fixed inset-y-0 left-0 hidden w-64 bg-navy-900 lg:block">{nav}</aside>
 
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 font-bold text-white">G</div>
-          <span className="font-semibold text-slate-900">Growvika</span>
-        </div>
-        <button onClick={() => setOpen(true)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" aria-label="Menu">
+      <header className="sticky top-0 z-30 flex items-center justify-between bg-navy-900 px-4 py-3 lg:hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-white.png" alt="GrowVika" className="h-6 w-auto" />
+        <button onClick={() => setOpen(true)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Open menu">
           <Menu size={20} />
         </button>
       </header>
@@ -119,8 +115,8 @@ export default function Shell({ children }: { children: ReactNode }) {
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-slate-900/50" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-slate-900">
-            <button onClick={() => setOpen(false)} className="absolute right-3 top-5 text-slate-400" aria-label="Close menu">
+          <aside className="absolute inset-y-0 left-0 w-64 bg-navy-900">
+            <button onClick={() => setOpen(false)} className="absolute right-3 top-6 text-slate-400" aria-label="Close menu">
               <X size={20} />
             </button>
             {nav}
@@ -133,8 +129,8 @@ export default function Shell({ children }: { children: ReactNode }) {
           {blocked ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <Lock className="text-slate-400" size={32} />
-              <p className="mt-3 font-medium text-slate-900">Ye page sirf Admin ke liye hai</p>
-              <p className="mt-1 text-sm text-slate-500">Aapke login se ye section nahi dikhega.</p>
+              <p className="mt-3 font-medium text-slate-900">This page is for admins only</p>
+              <p className="mt-1 text-sm text-slate-500">Your account doesn&apos;t have access to this section.</p>
             </div>
           ) : (
             children

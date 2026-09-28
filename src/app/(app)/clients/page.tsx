@@ -35,7 +35,7 @@ export default function ClientsPage() {
         subtitle={`${list.length} clients`}
         actions={
           <Button onClick={() => setAdding(true)}>
-            <Plus size={16} /> Naya client
+            <Plus size={16} /> New client
           </Button>
         }
       />
@@ -44,15 +44,15 @@ export default function ClientsPage() {
         <div className="grid gap-3 sm:grid-cols-[1fr_160px_160px]">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Naam, business, phone ya city se search" className="pl-9" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, business, phone or city" className="pl-9" />
           </div>
-          <Select value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: "All", label: "Saare status" }, "Active", "VIP", "Inactive"]} />
-          <Select value={service} onChange={(e) => setService(e.target.value)} options={[{ value: "All", label: "Saari services" }, ...SERVICES]} />
+          <Select value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: "All", label: "All statuses" }, "Active", "VIP", "Inactive"]} />
+          <Select value={service} onChange={(e) => setService(e.target.value)} options={[{ value: "All", label: "All services" }, ...SERVICES]} />
         </div>
       </Card>
 
       {list.length === 0 ? (
-        <Card><Empty text="Koi client nahi mila" /></Card>
+        <Card><Empty text="No clients found" /></Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((c) => {
@@ -62,7 +62,7 @@ export default function ClientsPage() {
                 <Card className="h-full p-4 transition-shadow hover:shadow-md">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 font-semibold text-emerald-700">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 font-semibold text-brand-700">
                         {c.business.charAt(0)}
                       </div>
                       <div className="min-w-0">
@@ -79,7 +79,7 @@ export default function ClientsPage() {
                   </div>
                   <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
                     <span>{userName(c.assignedTo)}</span>
-                    {isAdmin && (bal > 0 ? <span className="font-medium text-red-600">Baaki {inr(bal)}</span> : <span className="font-medium text-emerald-600">Fully paid</span>)}
+                    {isAdmin && (bal > 0 ? <span className="font-medium text-red-600">Due {inr(bal)}</span> : <span className="font-medium text-emerald-600">Fully paid</span>)}
                   </div>
                 </Card>
               </Link>
@@ -88,7 +88,7 @@ export default function ClientsPage() {
         </div>
       )}
 
-      <Modal open={adding} onClose={() => setAdding(false)} title="Naya client add karein" wide>
+      <Modal open={adding} onClose={() => setAdding(false)} title="Add a new client" wide>
         <ClientForm
           initial={emptyClient(user!.id)}
           onCancel={() => setAdding(false)}

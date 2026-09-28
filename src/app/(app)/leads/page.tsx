@@ -34,7 +34,7 @@ export default function LeadsPage() {
   const move = (l: Lead, stage: LeadStage) => {
     let lostReason = l.lostReason;
     if (stage === "Lost" && l.stage !== "Lost") {
-      const r = prompt("Deal kyun gayi? (reason)", l.lostReason || "");
+      const r = prompt("Why was the deal lost? (reason)", l.lostReason || "");
       if (r === null) return;
       lostReason = r;
     }
@@ -47,7 +47,7 @@ export default function LeadsPage() {
     update((d) => ({
       ...d,
       clients: [...d.clients, { ...base, id, name: l.name, business: l.business, phone: l.phone, whatsapp: l.phone, services: l.service ? [l.service] : [], notes: l.note }],
-      leads: d.leads.map((x) => (x.id === l.id ? { ...x, stage: "Won", note: `${x.note}${x.note ? " · " : ""}Client ban gaya` } : x)),
+      leads: d.leads.map((x) => (x.id === l.id ? { ...x, stage: "Won", note: `${x.note}${x.note ? " · " : ""}Converted to client` } : x)),
     }));
     router.push(`/clients/${id}`);
   };
@@ -55,8 +55,8 @@ export default function LeadsPage() {
   const save = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
-    if (!form.name.trim()) return setErr("Lead ka naam daalein");
-    if (!/^\d{10}$/.test(form.phone.replace(/\D/g, ""))) return setErr("Sahi 10 digit phone number daalein");
+    if (!form.name.trim()) return setErr("Enter the lead's name");
+    if (!/^\d{10}$/.test(form.phone.replace(/\D/g, ""))) return setErr("Enter a valid 10-digit phone number");
     if (form.id) update((d) => ({ ...d, leads: d.leads.map((x) => (x.id === form.id ? form : x)) }));
     else update((d) => ({ ...d, leads: [...d.leads, { ...form, id: uid("l") }] }));
     setForm(null);
@@ -75,18 +75,18 @@ export default function LeadsPage() {
     <div>
       <PageHeader
         title="Leads pipeline"
-        subtitle={`${openCount} open leads · ${won} deals pakki${closed ? ` · win rate ${Math.round((won / closed) * 100)}%` : ""}`}
+        subtitle={`${openCount} open leads · ${won} won${closed ? ` · win rate ${Math.round((won / closed) * 100)}%` : ""}`}
         actions={
           <>
             {isAdmin && (
-              <Select value={who} onChange={(e) => setWho(e.target.value)} options={[{ value: "all", label: "Saari team" }, ...db.users.map((u) => ({ value: u.id, label: u.name }))]} className="w-44" />
+              <Select value={who} onChange={(e) => setWho(e.target.value)} options={[{ value: "all", label: "Whole team" }, ...db.users.map((u) => ({ value: u.id, label: u.name }))]} className="w-44" />
             )}
-            <Button onClick={openNew}><Plus size={16} /> Naya lead</Button>
+            <Button onClick={openNew}><Plus size={16} /> New lead</Button>
           </>
         }
       />
 
-      <p className="mb-3 text-xs text-slate-500">Card ko drag karke agle stage mein daalein, ya arrows use karein.</p>
+      <p className="mb-3 text-xs text-slate-500">Drag a card to another stage, or use the arrows.</p>
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
@@ -130,13 +130,13 @@ export default function LeadsPage() {
                       </div>
                       <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
                         <div className="flex gap-1">
-                          <button disabled={idx === 0} onClick={() => move(l, LEAD_STAGES[idx - 1])} className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30" aria-label="Pichhla stage"><ChevronLeft size={16} /></button>
-                          <button disabled={idx === LEAD_STAGES.length - 1} onClick={() => move(l, LEAD_STAGES[idx + 1])} className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30" aria-label="Agla stage"><ChevronRight size={16} /></button>
+                          <button disabled={idx === 0} onClick={() => move(l, LEAD_STAGES[idx - 1])} className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30" aria-label="Previous stage"><ChevronLeft size={16} /></button>
+                          <button disabled={idx === LEAD_STAGES.length - 1} onClick={() => move(l, LEAD_STAGES[idx + 1])} className="rounded p-1 text-slate-400 hover:bg-slate-100 disabled:opacity-30" aria-label="Next stage"><ChevronRight size={16} /></button>
                           <a href={`tel:${l.phone}`} className="rounded p-1 text-slate-400 hover:bg-slate-100" aria-label="Call"><Phone size={15} /></a>
                         </div>
-                        {(stage === "Proposal Sent" || stage === "Won") && !l.note.includes("Client ban gaya") && (
-                          <button onClick={() => convert(l)} className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100">
-                            <UserPlus size={12} /> Client banao
+                        {(stage === "Proposal Sent" || stage === "Won") && !l.note.includes("Converted to client") && (
+                          <button onClick={() => convert(l)} className="flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100">
+                            <UserPlus size={12} /> Make client
                           </button>
                         )}
                       </div>
@@ -149,27 +149,27 @@ export default function LeadsPage() {
         })}
       </div>
 
-      <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? "Lead edit karein" : "Naya lead"}>
+      <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? "Edit lead" : "New lead"}>
         {form && (
           <form onSubmit={save} className="grid gap-4 sm:grid-cols-2">
-            <Field label="Naam *"><Input value={form.name} onChange={(e) => { setErr(""); setForm({ ...form, name: e.target.value }); }} autoFocus /></Field>
+            <Field label="Name *"><Input value={form.name} onChange={(e) => { setErr(""); setForm({ ...form, name: e.target.value }); }} autoFocus /></Field>
             <Field label="Business"><Input value={form.business} onChange={(e) => setForm({ ...form, business: e.target.value })} /></Field>
             <Field label="Phone *"><Input value={form.phone} onChange={(e) => { setErr(""); setForm({ ...form, phone: e.target.value }); }} inputMode="numeric" /></Field>
-            <Field label="Kahan se aaya"><Select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={LEAD_SOURCES} /></Field>
-            <Field label="Kis service mein interest"><Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} options={SERVICES} /></Field>
+            <Field label="Source"><Select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={LEAD_SOURCES} /></Field>
+            <Field label="Interested in"><Select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} options={SERVICES} /></Field>
             <Field label="Stage"><Select value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value as LeadStage })} options={LEAD_STAGES} /></Field>
             <Field label="Next follow-up"><Input type="date" value={form.followUp} onChange={(e) => setForm({ ...form, followUp: e.target.value })} /></Field>
-            <Field label="Kisko assign">
+            <Field label="Assigned to">
               <Select value={form.assignedTo} disabled={!isAdmin} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} options={db.users.filter((u) => u.active).map((u) => ({ value: u.id, label: u.name }))} />
             </Field>
             {form.stage === "Lost" && (
-              <Field label="Deal kyun gayi" full><Input value={form.lostReason} onChange={(e) => setForm({ ...form, lostReason: e.target.value })} /></Field>
+              <Field label="Why was it lost" full><Input value={form.lostReason} onChange={(e) => setForm({ ...form, lostReason: e.target.value })} /></Field>
             )}
             <Field label="Note" full><Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
             {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
             <div className="flex justify-between gap-2 sm:col-span-2">
               {form.id ? (
-                <Button type="button" variant="danger" onClick={() => { if (confirm("Lead delete karna hai?")) { update((d) => ({ ...d, leads: d.leads.filter((x) => x.id !== form.id) })); setForm(null); } }}>
+                <Button type="button" variant="danger" onClick={() => { if (confirm("Delete this lead?")) { update((d) => ({ ...d, leads: d.leads.filter((x) => x.id !== form.id) })); setForm(null); } }}>
                   <Trash2 size={14} /> Delete
                 </Button>
               ) : <span />}

@@ -4,8 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useState, ReactNode 
 import { DB, User } from "./types";
 import { seedDB } from "./seed";
 
-const DB_KEY = "growvika_crm_db_v1";
-const SESSION_KEY = "growvika_crm_session_v1";
+const DB_KEY = "growvika_crm_db_v2";
+const SESSION_KEY = "growvika_crm_session_v2";
 
 interface StoreCtx {
   ready: boolean;

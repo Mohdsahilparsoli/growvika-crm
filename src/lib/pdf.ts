@@ -5,30 +5,65 @@ import autoTable from "jspdf-autotable";
 import { Client, DB, Expense, Payment } from "./types";
 import { fmtDate, pdfInr } from "./format";
 
-const BRAND: [number, number, number] = [5, 150, 105];
+const BRAND: [number, number, number] = [61, 101, 254];
+const NAVY: [number, number, number] = [3, 8, 27];
+const GREEN: [number, number, number] = [5, 150, 105];
 const DARK: [number, number, number] = [15, 23, 42];
 const MUTED: [number, number, number] = [100, 116, 139];
 
 const lastY = (doc: jsPDF) =>
   (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
 
-function header(doc: jsPDF, db: DB, title: string) {
+let logoCache: { data: string; w: number; h: number } | null = null;
+
+async function loadLogo() {
+  if (logoCache) return logoCache;
+  try {
+    const res = await fetch("/logo-white.png");
+    const blob = await res.blob();
+    const data: string = await new Promise((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.readAsDataURL(blob);
+    });
+    const dims: { w: number; h: number } = await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.width, h: img.height });
+      img.src = data;
+    });
+    logoCache = { data, ...dims };
+  } catch {
+    logoCache = null;
+  }
+  return logoCache;
+}
+
+async function header(doc: jsPDF, db: DB, title: string) {
   const W = doc.internal.pageSize.getWidth();
-  doc.setFillColor(...BRAND);
+  doc.setFillColor(...NAVY);
   doc.rect(0, 0, W, 34, "F");
+  const logo = await loadLogo();
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text(db.company.name.toUpperCase(), 14, 16);
+  if (logo) {
+    const h = 9;
+    doc.addImage(logo.data, "PNG", 14, 8, (logo.w / logo.h) * h, h);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text(db.company.name, 14, 16);
+  }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
+  doc.setTextColor(203, 213, 225);
   doc.text(db.company.tagline, 14, 23);
   doc.text(`${db.company.phone}  |  ${db.company.email}`, 14, 29);
+  doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.text(title, W - 14, 16, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225);
   doc.text(db.company.address, W - 14, 23, { align: "right" });
   if (db.company.gst) doc.text(`GSTIN: ${db.company.gst}`, W - 14, 29, { align: "right" });
   doc.setTextColor(...DARK);
@@ -65,11 +100,11 @@ function footer(doc: jsPDF, db: DB) {
   doc.text("This is a computer generated document.", W - 14, H - 13, { align: "right" });
 }
 
-export function paymentInvoicePDF(db: DB, p: Payment) {
+export async function paymentInvoicePDF(db: DB, p: Payment) {
   const c = db.clients.find((x) => x.id === p.clientId)!;
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
-  header(doc, db, c.gstApplicable ? "TAX INVOICE" : "INVOICE");
+  await header(doc, db, c.gstApplicable ? "TAX INVOICE" : "INVOICE");
 
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
@@ -147,7 +182,7 @@ export function paymentInvoicePDF(db: DB, p: Payment) {
   });
 
   ty = lastY(doc) + 10;
-  doc.setFillColor(236, 253, 245);
+  doc.setFillColor(238, 242, 255);
   doc.roundedRect(14, ty, W - 28, 14, 2, 2, "F");
   doc.setTextColor(...BRAND);
   doc.setFont("helvetica", "bold");
@@ -161,11 +196,11 @@ export function paymentInvoicePDF(db: DB, p: Payment) {
   doc.save(`${p.invoiceNo}-${c.business.replace(/\s+/g, "-")}.pdf`);
 }
 
-export function fullBillPDF(db: DB, clientId: string) {
+export async function fullBillPDF(db: DB, clientId: string) {
   const c = db.clients.find((x) => x.id === clientId)!;
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
-  header(doc, db, "FULL BILL / STATEMENT");
+  await header(doc, db, "FULL BILL / STATEMENT");
 
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
@@ -186,8 +221,8 @@ export function fullBillPDF(db: DB, clientId: string) {
   const boxW = (W - 28 - 8) / 3;
   const boxes: [string, string, [number, number, number]][] = [
     ["TOTAL BILLING", pdfInr(c.totalBilling), DARK],
-    ["TOTAL RECEIVED", pdfInr(paid), BRAND],
-    ["BALANCE PENDING", pdfInr(bal), bal > 0 ? [220, 38, 38] : BRAND],
+    ["TOTAL RECEIVED", pdfInr(paid), GREEN],
+    ["BALANCE PENDING", pdfInr(bal), bal > 0 ? [220, 38, 38] : GREEN],
   ];
   boxes.forEach(([label, val, col], i) => {
     const x = 14 + i * (boxW + 4);
@@ -230,7 +265,7 @@ export function fullBillPDF(db: DB, clientId: string) {
   doc.save(`Full-Bill-${c.business.replace(/\s+/g, "-")}.pdf`);
 }
 
-export function expenseReportPDF(
+export async function expenseReportPDF(
   db: DB,
   rangeLabel: string,
   income: number,
@@ -238,7 +273,7 @@ export function expenseReportPDF(
 ) {
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
-  header(doc, db, "ACCOUNT REPORT");
+  await header(doc, db, "ACCOUNT REPORT");
   const spent = expenses.reduce((s, e) => s + e.amount, 0);
 
   doc.setFontSize(10);
@@ -248,9 +283,9 @@ export function expenseReportPDF(
 
   const boxW = (W - 28 - 8) / 3;
   const boxes: [string, string, [number, number, number]][] = [
-    ["TOTAL AAYA", pdfInr(income), BRAND],
-    ["TOTAL KHARCHA", pdfInr(spent), [220, 38, 38]],
-    ["BACHA HUA", pdfInr(income - spent), income - spent >= 0 ? DARK : [220, 38, 38]],
+    ["TOTAL INCOME", pdfInr(income), GREEN],
+    ["TOTAL EXPENSES", pdfInr(spent), [220, 38, 38]],
+    ["BALANCE LEFT", pdfInr(income - spent), income - spent >= 0 ? DARK : [220, 38, 38]],
   ];
   boxes.forEach(([label, val, col], i) => {
     const x = 14 + i * (boxW + 4);
@@ -272,7 +307,7 @@ export function expenseReportPDF(
   expenses.forEach((e) => (byCat[e.category] = (byCat[e.category] ?? 0) + e.amount));
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Category-wise Kharcha", 14, 80);
+  doc.text("Expenses by category", 14, 80);
   doc.setFont("helvetica", "normal");
   autoTable(doc, {
     startY: 83,
@@ -289,11 +324,11 @@ export function expenseReportPDF(
 
   const ty = lastY(doc) + 10;
   doc.setFont("helvetica", "bold");
-  doc.text("Kharche ki poori list", 14, ty);
+  doc.text("All expenses", 14, ty);
   doc.setFont("helvetica", "normal");
   autoTable(doc, {
     startY: ty + 3,
-    head: [["Date", "Kahan", "Kyun", "Category", "Mode", "Amount"]],
+    head: [["Date", "Where", "Why", "Category", "Mode", "Amount"]],
     body: [...expenses]
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((e) => [fmtDate(e.date), e.where, e.why, e.category, e.mode, pdfInr(e.amount)]),
@@ -306,5 +341,5 @@ export function expenseReportPDF(
   });
 
   footer(doc, db);
-  doc.save(`Growvika-Account-Report.pdf`);
+  doc.save(`GrowVika-Account-Report.pdf`);
 }

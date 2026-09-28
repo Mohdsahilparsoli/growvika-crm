@@ -3,8 +3,8 @@ import "./globals.css";
 import { StoreProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
-  title: "Growvika CRM",
-  description: "Growvika - client management, billing aur company account",
+  title: "GrowVika CRM",
+  description: "GrowVika client management, billing and company accounts",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

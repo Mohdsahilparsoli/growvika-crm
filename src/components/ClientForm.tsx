@@ -45,23 +45,23 @@ export default function ClientForm({
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!c.name.trim() || !c.business.trim()) return setErr("Client ka naam aur business ka naam zaroori hai");
-    if (!/^\d{10}$/.test(c.phone.replace(/\D/g, ""))) return setErr("Sahi 10 digit phone number daalein");
+    if (!c.name.trim() || !c.business.trim()) return setErr("Client name and business name are required");
+    if (!/^\d{10}$/.test(c.phone.replace(/\D/g, ""))) return setErr("Enter a valid 10-digit phone number");
     onSave({ ...c, whatsapp: c.whatsapp || c.phone });
   };
 
   return (
     <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-      <Field label="Client ka naam *">
+      <Field label="Client name *">
         <Input value={c.name} onChange={(e) => set("name", e.target.value)} />
       </Field>
-      <Field label="Business ka naam *">
+      <Field label="Business name *">
         <Input value={c.business} onChange={(e) => set("business", e.target.value)} />
       </Field>
       <Field label="Phone *">
         <Input value={c.phone} onChange={(e) => set("phone", e.target.value)} inputMode="numeric" />
       </Field>
-      <Field label="WhatsApp (khali chhodein to phone wala)">
+      <Field label="WhatsApp (leave blank to use phone)">
         <Input value={c.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} inputMode="numeric" />
       </Field>
       <Field label="Email">
@@ -89,7 +89,7 @@ export default function ClientForm({
                 key={s}
                 onClick={() => set("services", on ? c.services.filter((x) => x !== s) : [...c.services, s])}
                 className={`rounded-full border px-3 py-1 text-xs ${
-                  on ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"
+                  on ? "border-brand-500 bg-brand-50 text-brand-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 {s}
@@ -101,7 +101,7 @@ export default function ClientForm({
       <Field label="Status">
         <Select value={c.status} onChange={(e) => set("status", e.target.value as ClientStatus)} options={["Active", "VIP", "Inactive"]} />
       </Field>
-      <Field label="Joining date">
+      <Field label="Client since">
         <Input type="date" value={c.joinedAt} onChange={(e) => set("joinedAt", e.target.value)} />
       </Field>
       {isAdmin && (
@@ -109,7 +109,7 @@ export default function ClientForm({
           <Field label="Total billing / package amount (₹)">
             <Input type="number" min={0} value={c.totalBilling || ""} onChange={(e) => set("totalBilling", Number(e.target.value))} />
           </Field>
-          <Field label="Kis team member ko diya">
+          <Field label="Assigned to">
             <Select
               value={c.assignedTo}
               onChange={(e) => set("assignedTo", e.target.value)}
@@ -117,13 +117,13 @@ export default function ClientForm({
             />
           </Field>
           <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
-            <input type="checkbox" checked={c.gstApplicable} onChange={(e) => set("gstApplicable", e.target.checked)} className="h-4 w-4 accent-emerald-600" />
-            Invoice mein GST (18%) lagana hai
+            <input type="checkbox" checked={c.gstApplicable} onChange={(e) => set("gstApplicable", e.target.checked)} className="h-4 w-4 accent-brand-500" />
+            Add GST (18%) to invoices
           </label>
         </>
       )}
       <Field label="Notes" full>
-        <Textarea value={c.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Jaise: sirf shaam ko call karna" />
+        <Textarea value={c.notes} onChange={(e) => set("notes", e.target.value)} placeholder="e.g. Call only in the evening" />
       </Field>
       {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
       <div className="flex justify-end gap-2 sm:col-span-2">

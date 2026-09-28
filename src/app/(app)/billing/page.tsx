@@ -22,7 +22,7 @@ export default function BillingPage() {
 
   return (
     <div>
-      <PageHeader title="Billing" subtitle="Saare clients ki billing ek jagah. Kisi client par click karke uski poori history aur Full Bill dekhein." />
+      <PageHeader title="Billing" subtitle="Billing for all clients in one place. Click a client to see its full history and Full Bill." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Total billing" value={inr(totalBilling)} hint={`${db.clients.length} clients`} />
@@ -32,12 +32,12 @@ export default function BillingPage() {
 
       <Card className="mt-6 overflow-hidden">
         <div className="border-b border-slate-100 px-4 py-3">
-          <h3 className="font-medium text-slate-900">Client-wise billing</h3>
+          <h3 className="font-medium text-slate-900">Billing by client</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-slate-50">
-              <tr><Th>Client</Th><Th right>Total</Th><Th right>Received</Th><Th right>Baaki</Th><Th right>Status</Th></tr>
+              <tr><Th>Client</Th><Th right>Total</Th><Th right>Received</Th><Th right>Due</Th><Th right>Status</Th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {db.clients.map((c) => {
@@ -47,7 +47,7 @@ export default function BillingPage() {
                 return (
                   <tr key={c.id} className="hover:bg-slate-50/60">
                     <Td>
-                      <Link href={`/clients/${c.id}?tab=billing`} className="font-medium text-slate-900 hover:text-emerald-700">{c.business}</Link>
+                      <Link href={`/clients/${c.id}?tab=billing`} className="font-medium text-slate-900 hover:text-brand-600">{c.business}</Link>
                       <div className="mt-1.5 h-1.5 w-40 rounded-full bg-slate-100">
                         <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                       </div>
@@ -67,12 +67,12 @@ export default function BillingPage() {
       <Card className="mt-6 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div>
-            <h3 className="font-medium text-slate-900">Saari payments</h3>
+            <h3 className="font-medium text-slate-900">All payments</h3>
             <p className="text-xs text-slate-500">{recent.length} payments · {inr(rangeTotal)}</p>
           </div>
           <Select value={range} onChange={(e) => setRange(e.target.value as RangeKey)} options={(Object.keys(RANGE_LABELS) as RangeKey[]).map((k) => ({ value: k, label: RANGE_LABELS[k] }))} className="w-44" />
         </div>
-        {recent.length === 0 ? <Empty text="Is period mein koi payment nahi" /> : (
+        {recent.length === 0 ? <Empty text="No payments in this period" /> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px]">
               <thead className="bg-slate-50">
