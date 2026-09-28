@@ -137,8 +137,8 @@ export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "do
 
   const decided = planDecided(c);
   const planText = decided ? [[c.planCategory, c.plan].filter(Boolean).join(": "), c.billingCycle].filter(Boolean).join(" / ") : "Advance (plan to be decided)";
-  const desc = p.service
-    ? [p.service, !decided ? "Advance (plan to be decided)" : "", p.note].filter(Boolean).join(" - ")
+  const desc = p.service || p.plan
+    ? [p.service, p.plan, p.note].filter(Boolean).join(" - ")
     : [planText, c.services.length ? `${c.services.join(", ")} services` : "", p.note].filter(Boolean).join(" - ");
   const body: (string | { content: string; styles: object })[][] = [];
   if (withGst) {
@@ -274,7 +274,7 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
     head: [["#", "Date", "Invoice No.", "For", "Mode", "Amount", "Total Paid"]],
     body: pays.map((p, i) => {
       running += p.amount;
-      return [String(i + 1), fmtDate(p.date), p.invoiceNo, [p.service, p.note].filter(Boolean).join(" - ") || "-", p.mode, pdfInr(p.amount), pdfInr(running)];
+      return [String(i + 1), fmtDate(p.date), p.invoiceNo, [p.service, p.plan, p.note].filter(Boolean).join(" - ") || "-", p.mode, pdfInr(p.amount), pdfInr(running)];
     }),
     foot: [["", "", "", "", "Total Received", pdfInr(paid), ""]],
     theme: "grid",

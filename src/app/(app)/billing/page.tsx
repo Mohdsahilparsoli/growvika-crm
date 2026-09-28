@@ -87,7 +87,7 @@ export default function BillingPage() {
                       <Td>{fmtDate(p.date)}</Td>
                       <Td className="font-mono text-xs">{p.invoiceNo}</Td>
                       <Td>{c?.business ?? "—"}</Td>
-                      <Td className="text-slate-500">{p.service || "—"}</Td>
+                      <Td className="text-slate-500">{[p.service, p.plan].filter(Boolean).join(" · ") || "—"}</Td>
                       <Td><Badge tone="blue">{p.mode}</Badge></Td>
                       <Td right className="font-semibold text-slate-900">{inr(p.amount)}</Td>
                       <Td right>{c && <Button size="sm" variant="secondary" onClick={() => paymentInvoicePDF(db, p)}><FileText size={14} /> PDF</Button>}</Td>

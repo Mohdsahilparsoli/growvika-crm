@@ -7,6 +7,8 @@ import { PAY_MODES, Payment, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, StatCard, Td, Th } from "./ui";
 import { fmtDate, inr, planDecided, todayISO, waLink } from "@/lib/format";
 import EmailSender from "./EmailSender";
+
+const NO_PLAN = "No plan decided";
 import { fullBillPDF, paymentInvoicePDF } from "@/lib/pdf";
 
 type SendTarget = { kind: "payment"; payment: Payment } | { kind: "full" };
@@ -34,15 +36,14 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
     if (p) setSend({ kind: "payment", payment: p });
   }, [justAdded, saving, db.payments]);
 
-  const [otherService, setOtherService] = useState(false);
   const planLabel = decided && c.plan ? `${c.planCategory ? `${c.planCategory}: ` : ""}${c.plan}` : "";
-  const otherServices = db.settings.services.filter((s) => !c.services.includes(s));
-  const knownServices = [planLabel, ...c.services, ...otherServices].filter(Boolean);
+  const allServices = Array.from(new Set([...db.settings.services, ...c.services]));
+  const planCategories = Array.from(new Set(db.settings.plans.map((x) => x.category)));
+  const planOptionLabel = (x: { category: string; name: string }) => `${x.category}: ${x.name}`;
 
   const openNew = () => {
     setErr("");
-    setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "", service: planLabel || c.services[0] || "" });
-    setOtherService(false);
+    setForm({ id: "", clientId, date: todayISO(), amount: 0, mode: "UPI", invoiceNo: "", note: "", service: c.services[0] ?? "", plan: planLabel || NO_PLAN });
   };
 
   const save = (e: React.FormEvent) => {
@@ -120,13 +121,14 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
           <Empty text="No payments yet. Use 'Add Payment' to record the first one." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px]">
+            <table className="w-full min-w-[880px]">
               <thead className="bg-slate-50">
                 <tr>
                   <Th>Date</Th>
                   <Th>Invoice No.</Th>
                   <Th>Mode</Th>
-                  <Th>For</Th>
+                  <Th>Service</Th>
+                  <Th>Plan</Th>
                   <Th>Note</Th>
                   <Th right>Amount</Th>
                   <Th right>Actions</Th>
@@ -139,6 +141,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                     <Td className="font-mono text-xs">{p.invoiceNo}</Td>
                     <Td><Badge tone="blue">{p.mode}</Badge></Td>
                     <Td className="text-slate-700">{p.service || "—"}</Td>
+                    <Td className="text-slate-500">{p.plan || "—"}</Td>
                     <Td className="text-slate-500">{p.note || "—"}</Td>
                     <Td right className="font-semibold text-slate-900">{inr(p.amount)}</Td>
                     <Td right>
@@ -149,7 +152,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                         <Button size="sm" variant="secondary" onClick={() => setSend({ kind: "payment", payment: p })} title="Send">
                           <Send size={14} /> Send
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setErr(""); setOtherService(!!p.service && ![planLabel, ...c.services, ...db.settings.services].includes(p.service)); setForm(p); }} aria-label="Edit">
+                        <Button size="sm" variant="ghost" onClick={() => { setErr(""); setForm(p); }} aria-label="Edit">
                           <Pencil size={14} />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => del(p)} aria-label="Delete">
@@ -174,28 +177,30 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             <Field label="Amount (₹)">
               <Input type="number" min={1} value={form.amount || ""} onChange={(e) => { setErr(""); setForm({ ...form, amount: Number(e.target.value) }); }} autoFocus />
             </Field>
-            <Field label="Payment for (service)" full>
+            <Field label="Service" full>
+              <Select
+                value={form.service ?? ""}
+                onChange={(e) => setForm({ ...form, service: e.target.value })}
+                options={[{ value: "", label: "Select service" }, ...Array.from(new Set([...allServices, form.service ?? ""].filter(Boolean)))]}
+              />
+            </Field>
+            <Field label="Plan" full>
               <select
-                value={otherService ? "__other" : form.service ?? ""}
-                onChange={(e) => {
-                  if (e.target.value === "__other") { setOtherService(true); setForm({ ...form, service: "" }); }
-                  else { setOtherService(false); setForm({ ...form, service: e.target.value }); }
-                }}
+                value={form.plan || NO_PLAN}
+                onChange={(e) => setForm({ ...form, plan: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               >
-                <option value="">Select service</option>
-                {planLabel && <optgroup label="Client's plan"><option value={planLabel}>{planLabel}</option></optgroup>}
-                {c.services.length > 0 && <optgroup label="Client's services">{c.services.map((s) => <option key={s} value={s}>{s}</option>)}</optgroup>}
-                {otherServices.length > 0 && <optgroup label="Other services">{otherServices.map((s) => <option key={s} value={s}>{s}</option>)}</optgroup>}
-                {form.service && !knownServices.includes(form.service) && !otherService && <option value={form.service}>{form.service}</option>}
-                <optgroup label="Custom"><option value="__other">Other (type it)</option></optgroup>
+                <option value={NO_PLAN}>No plan decided</option>
+                {form.plan && form.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === form.plan) && <option value={form.plan}>{form.plan}</option>}
+                {planCategories.map((cat) => (
+                  <optgroup key={cat} label={cat}>
+                    {db.settings.plans.filter((x) => x.category === cat).map((x) => (
+                      <option key={x.id} value={planOptionLabel(x)}>{x.category} · {x.name} — {inr(x.price)}{x.cycle ? ` / ${x.cycle}` : ""}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </Field>
-            {otherService && (
-              <Field label="Service name" full>
-                <Input value={form.service ?? ""} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="e.g. Setup fee, Logo design, Extra reels" autoFocus />
-              </Field>
-            )}
             <Field label="Payment mode">
               <Select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as PayMode })} options={PAY_MODES} />
             </Field>
