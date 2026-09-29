@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     if (!email) return fail("Please enter your email");
     const smtp = await getSmtp();
     if (!smtp.host || !smtp.user || !smtp.pass) {
-      return fail("Email sending is not set up, so a reset link cannot be sent. Use the recovery key option below.", 503);
+      return fail("Email sending is not set up, so a reset link cannot be sent. Ask another admin to reset your password from Team & Settings.", 503);
     }
     const p = await db();
     const r = await p.query("SELECT id, name, email, password_hash, active FROM gv_users WHERE LOWER(email) = $1", [email]);
