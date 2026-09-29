@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { Download, Plus, Search, Trash2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import dynamic from "next/dynamic";
 import { useStore, uid } from "@/lib/store";
 import { Expense, PAY_MODES, PayMode } from "@/lib/types";
 import { Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Select, StatCard, Td, Textarea, Th } from "@/components/ui";
 import { fmtDate, inr, inRange, RANGE_LABELS, RangeKey, todayISO, totalExpense, totalIncome, isPaid } from "@/lib/format";
-import { expenseReportPDF } from "@/lib/pdf";
+import { expenseReportPDF } from "@/lib/pdfLazy";
 
 const COLORS = ["#059669", "#0ea5e9", "#8b5cf6", "#f59e0b", "#ef4444", "#64748b", "#ec4899"];
+
+const ExpensePie = dynamic(() => import("@/components/charts/ExpensePie"), { ssr: false, loading: () => <div className="h-full animate-pulse rounded-full bg-slate-50" /> });
 
 export default function ExpensesPage() {
   const { db, update } = useStore();
@@ -96,14 +98,7 @@ export default function ExpensesPage() {
           {byCat.length === 0 ? <Empty text="No expenses" /> : (
             <>
               <div className="mt-2 h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={byCat} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
-                      {byCat.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(v) => inr(Number(v))} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ExpensePie data={byCat} colors={COLORS} />
               </div>
               <ul className="mt-2 space-y-2">
                 {byCat.map((c, i) => (

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, Loader2, Mail } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { Client } from "@/lib/types";
-import { PdfResult } from "@/lib/pdf";
+import type { PdfResult } from "@/lib/pdf";
 import { todayISO } from "@/lib/format";
 import { Button, Input, Textarea } from "./ui";
 

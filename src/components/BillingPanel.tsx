@@ -10,7 +10,7 @@ import EmailSender from "./EmailSender";
 
 const NO_PLAN = "No plan decided";
 const CUSTOM = "__custom_plan";
-import { fullBillPDF, paymentInvoicePDF } from "@/lib/pdf";
+import { fullBillPDF, paymentInvoicePDF } from "@/lib/pdfLazy";
 
 type SendTarget = { kind: "payment"; payment: Payment } | { kind: "full" };
 

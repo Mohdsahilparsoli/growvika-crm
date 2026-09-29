@@ -53,6 +53,30 @@ async function loadLogo() {
   return logoCache;
 }
 
+const blobToDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.readAsDataURL(blob);
+  });
+
+// The signature comes as a cached URL (/api/signature?v=...); turn it into image data once
+const sigCache = new Map<string, string>();
+async function loadSignature(src?: string) {
+  if (!src) return "";
+  if (src.startsWith("data:")) return src;
+  if (sigCache.has(src)) return sigCache.get(src)!;
+  try {
+    const res = await fetch(src);
+    if (!res.ok) return "";
+    const data = await blobToDataUrl(await res.blob());
+    sigCache.set(src, data);
+    return data;
+  } catch {
+    return "";
+  }
+}
+
 async function header(doc: jsPDF, db: DB, title: string) {
   const W = doc.internal.pageSize.getWidth();
   doc.setFillColor(...NAVY);
@@ -103,8 +127,8 @@ function billTo(doc: jsPDF, c: Client, y: number) {
   return y + 12 + lines.length * 5;
 }
 
-function signature(doc: jsPDF, db: DB) {
-  const sig = db.company.signature;
+async function signature(doc: jsPDF, db: DB) {
+  const sig = await loadSignature(db.company.signature);
   if (!sig) return;
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -253,7 +277,7 @@ export async function paymentInvoicePDF(db: DB, p: Payment, output: Output = "do
   });
   doc.setTextColor(...DARK);
 
-  signature(doc, db);
+  await signature(doc, db);
   footer(doc, db);
   return finish(doc, `${p.invoiceNo}-${c.business.replace(/\s+/g, "-")}.pdf`, output);
 }
@@ -376,7 +400,7 @@ export async function fullBillPDF(db: DB, clientId: string, output: Output = "do
   doc.text(doc.splitTextToSize(`Plan: ${decided ? planSummary(c) || "-" : "To be decided"}   |   Services: ${c.services.join(", ") || "-"}`, doc.internal.pageSize.getWidth() - 28), 14, ty);
   doc.text(`Total payments: ${pays.length}`, 14, ty + 5);
 
-  signature(doc, db);
+  await signature(doc, db);
   footer(doc, db);
   return finish(doc, `Full-Bill-${c.business.replace(/\s+/g, "-")}.pdf`, output);
 }

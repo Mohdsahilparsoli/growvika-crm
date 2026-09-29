@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { Users, TrendingUp, Clock, Wallet, Target, PhoneCall } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import dynamic from "next/dynamic";
 import { useStore } from "@/lib/store";
 import { Badge, Card, PageHeader, StatCard, Empty } from "@/components/ui";
 import { upcomingRenewals, billedToDate, isPaid, pendingFor, formatPhone, telLink, paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
+
+// Charts library loads separately, after the page is already on screen
+const IncomeChart = dynamic(() => import("@/components/charts/IncomeChart"), { ssr: false, loading: () => <div className="h-full animate-pulse rounded-lg bg-slate-50" /> });
 
 export default function Dashboard() {
   const { db, user, isAdmin, userName } = useStore();
@@ -208,17 +211,7 @@ export default function Dashboard() {
             <h3 className="font-medium text-slate-900">Monthly income vs expenses</h3>
             <p className="text-xs text-slate-500">Last 6 months</p>
             <div className="mt-4 h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chart} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${Number(v) / 1000}k`} width={40} />
-                  <Tooltip formatter={(v) => inr(Number(v))} cursor={{ fill: "#f1f5f9" }} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="Income" fill="#059669" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Expenses" fill="#f87171" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <IncomeChart data={chart} />
             </div>
           </Card>
           <Card className="p-5">

@@ -17,10 +17,27 @@ function pool() {
     globalForDb.gvPool = new Pool({
       connectionString: url,
       ssl: isLocal ? false : { rejectUnauthorized: false },
-      max: 5,
+      max: 3,
+      idleTimeoutMillis: 10_000,
     });
   }
   return globalForDb.gvPool;
+}
+
+const SCHEMA_VERSION = "schema_ready_v1";
+
+// On a normal cold start this is ONE small query. The full setup below only runs
+// the first time (or after a new migration is added and SCHEMA_VERSION is bumped).
+async function ensureSchema() {
+  const p = pool();
+  try {
+    const r = await p.query("SELECT 1 FROM gv_settings WHERE key = $1", [SCHEMA_VERSION]);
+    if (r.rowCount) return;
+  } catch {
+    // tables do not exist yet
+  }
+  await createSchema();
+  await p.query("INSERT INTO gv_settings (key, value) VALUES ($1, 'true'::jsonb) ON CONFLICT DO NOTHING", [SCHEMA_VERSION]);
 }
 
 async function createSchema() {
@@ -90,7 +107,7 @@ async function createSchema() {
 
 export async function db() {
   if (!globalForDb.gvSchema) {
-    globalForDb.gvSchema = createSchema().catch((e) => {
+    globalForDb.gvSchema = ensureSchema().catch((e) => {
       globalForDb.gvSchema = undefined;
       throw e;
     });
@@ -152,4 +169,20 @@ export async function deleteRecord(collection: string, id: string) {
 export async function deleteWhere(collection: string, field: string, value: string) {
   const p = await db();
   await p.query("DELETE FROM gv_records WHERE collection = $1 AND data->>$2 = $3", [collection, field, value]);
+}
+
+// Several settings in one query
+export async function getSettings(keys: string[]): Promise<Record<string, unknown>> {
+  const p = await db();
+  const r = await p.query("SELECT key, value FROM gv_settings WHERE key = ANY($1::text[])", [keys]);
+  return Object.fromEntries(r.rows.map((x) => [x.key, x.value]));
+}
+
+// Several collections in one query
+export async function listCollections(collections: string[]): Promise<Record<string, unknown[]>> {
+  const p = await db();
+  const r = await p.query("SELECT collection, data FROM gv_records WHERE collection = ANY($1::text[]) ORDER BY created_at", [collections]);
+  const out: Record<string, unknown[]> = Object.fromEntries(collections.map((c) => [c, []]));
+  for (const row of r.rows) out[row.collection].push(row.data);
+  return out;
 }

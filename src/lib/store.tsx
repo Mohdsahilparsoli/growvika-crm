@@ -45,17 +45,30 @@ async function api(method: string, url: string, body?: unknown) {
 
 const COLS = ["clients", "payments", "leads", "comms", "expenses"] as const;
 
-async function pushChanges(prev: DB, next: DB) {
+type Col = (typeof COLS)[number];
+interface PushResult {
+  saved: { col: Col; rec: { id: string } }[];
+  deleted: { col: Col; id: string }[];
+  needsRefresh: boolean; // team, company or settings changed: reload everything once
+}
+
+// Sends only what changed. Each record is saved on its own and the server's saved
+// copy is returned, so the app does not need to download all data again.
+async function pushChanges(prev: DB, next: DB): Promise<PushResult> {
+  const out: PushResult = { saved: [], deleted: [], needsRefresh: false };
   for (const col of COLS) {
     const a = new Map((prev[col] as { id: string }[]).map((r) => [r.id, r]));
     const b = new Map((next[col] as { id: string }[]).map((r) => [r.id, r]));
     for (const [id, rec] of b) {
       const old = a.get(id);
-      if (!old) await api("POST", `/api/records/${col}`, rec);
-      else if (JSON.stringify(old) !== JSON.stringify(rec)) await api("PATCH", `/api/records/${col}/${encodeURIComponent(id)}`, rec);
+      if (!old) out.saved.push({ col, rec: (await api("POST", `/api/records/${col}`, rec)).record });
+      else if (JSON.stringify(old) !== JSON.stringify(rec)) out.saved.push({ col, rec: (await api("PATCH", `/api/records/${col}/${encodeURIComponent(id)}`, rec)).record });
     }
     for (const id of a.keys()) {
-      if (!b.has(id)) await api("DELETE", `/api/records/${col}/${encodeURIComponent(id)}`);
+      if (!b.has(id)) {
+        await api("DELETE", `/api/records/${col}/${encodeURIComponent(id)}`);
+        out.deleted.push({ col, id });
+      }
     }
   }
 
@@ -64,6 +77,8 @@ async function pushChanges(prev: DB, next: DB) {
     const old = pu.get(u.id);
     if (!old) await api("POST", "/api/users", u);
     else if (JSON.stringify(old) !== JSON.stringify(u)) await api("PATCH", `/api/users/${encodeURIComponent(u.id)}`, u);
+    else continue;
+    out.needsRefresh = true;
   }
 
   const companyChanged = JSON.stringify(prev.company) !== JSON.stringify(next.company);
@@ -73,7 +88,33 @@ async function pushChanges(prev: DB, next: DB) {
       ...(companyChanged ? { company: next.company } : {}),
       ...(settingsChanged ? { settings: next.settings } : {}),
     });
+    out.needsRefresh = true;
   }
+  return out;
+}
+
+// Put the server's saved copies into the local data (no full reload needed)
+function applySaved(d: DB, r: PushResult): DB {
+  const nd = { ...d } as DB;
+  for (const col of COLS) {
+    const saved = r.saved.filter((x) => x.col === col && x.rec?.id);
+    const gone = new Set(r.deleted.filter((x) => x.col === col).map((x) => x.id));
+    if (!saved.length && !gone.size) continue;
+    const list = (nd[col] as { id: string }[]).filter((x) => !gone.has(x.id));
+    for (const { rec } of saved) {
+      const i = list.findIndex((x) => x.id === rec.id);
+      if (i >= 0) list[i] = rec;
+      else list.push(rec);
+    }
+    (nd as unknown as Record<string, unknown>)[col] = list;
+  }
+  // Keep the "next invoice number" preview in step with new bills
+  for (const { col, rec } of r.saved) {
+    if (col !== "payments") continue;
+    const n = Number(/(\d+)$/.exec((rec as { invoiceNo?: string }).invoiceNo ?? "")?.[1] ?? 0);
+    if (n > nd.invoiceCounter) nd.invoiceCounter = n;
+  }
+  return nd;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -85,10 +126,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const dbRef = useRef(db);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const pending = useRef(0);
+  const needReload = useRef(false);
+
+  const lastFetch = useRef(0);
+  const userRef = useRef<User | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const data = await api("GET", "/api/data");
+      lastFetch.current = Date.now();
+      userRef.current = data.user;
       dbRef.current = data.db;
       setDb(data.db);
       setUser(data.user);
@@ -111,6 +158,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
+  // See teammates' changes: reload when you come back to the tab after 5+ minutes
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && userRef.current && pending.current === 0 && Date.now() - lastFetch.current > 5 * 60_000) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refresh]);
+
   const update = useCallback(
     (fn: (d: DB) => DB) => {
       const prev = dbRef.current;
@@ -120,14 +176,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       pending.current += 1;
       setSaving(true);
       queue.current = queue.current.then(async () => {
+        let reload = false;
         try {
-          await pushChanges(prev, next);
+          const r = await pushChanges(prev, next);
+          // Team members only get limited data, so for them reload from the server
+          if (r.needsRefresh || userRef.current?.role !== "admin") reload = true;
+          else {
+            dbRef.current = applySaved(dbRef.current, r);
+            setDb(dbRef.current);
+          }
         } catch (e) {
           setError((e as Error).message || "Could not save. Please try again.");
+          reload = true;
         } finally {
           pending.current -= 1;
+          needReload.current ||= reload;
           if (pending.current === 0) {
-            await refresh();
+            if (needReload.current) await refresh();
+            needReload.current = false;
             setSaving(false);
           }
         }

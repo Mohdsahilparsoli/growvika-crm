@@ -16,7 +16,8 @@ export async function PUT(req: Request) {
     if (b.company) {
       const c = b.company;
       const cur = await getSetting<{ signature?: string }>("company", {});
-      const sig = typeof c.signature === "string" ? c.signature : cur.signature ?? "";
+      // "/api/signature?v=..." means the signature was not changed
+      const sig = typeof c.signature === "string" && !c.signature.startsWith("/api/signature") ? c.signature : cur.signature ?? "";
       const validSig = sig === "" || (/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(sig) && sig.length <= 600_000);
       if (!validSig) return fail("Signature image is too large or not a PNG/JPG", 400);
       await setSetting("company", {

@@ -1,5 +1,6 @@
 import "server-only";
-import { db, deleteRecord, deleteWhere, getRecord, getSetting, listRecords, nextInvoiceNumber, putRecord } from "./db";
+import { createHash } from "crypto";
+import { db, deleteRecord, deleteWhere, getRecord, getSetting, getSettings, listCollections, nextInvoiceNumber, putRecord } from "./db";
 import { SessionUser } from "./auth";
 import { DEFAULT_COMPANY, DEFAULT_SETTINGS, normalizePlans } from "@/lib/defaults";
 import { normalizePhone } from "@/lib/format";
@@ -140,21 +141,34 @@ async function clientOwnedBy(clientId: string, userId: string) {
   return !!c && c.assignedTo === userId;
 }
 
+// The signature image is served separately (see /api/signature) so it is not
+// downloaded again with every page load.
+function publicCompany(c: Company): Company {
+  if (!c.signature) return c;
+  const v = createHash("sha1").update(c.signature).digest("hex").slice(0, 10);
+  return { ...c, signature: `/api/signature?v=${v}` };
+}
+
 export async function snapshot(user: SessionUser): Promise<DB> {
   const admin = user.role === "admin";
   const p = await db();
-  const [company, settings, counter, usersRes, clients, leads, comms] = await Promise.all([
-    getSetting<Company>("company", DEFAULT_COMPANY),
-    getSetting<Settings>("settings", DEFAULT_SETTINGS),
-    getSetting<number>("invoiceCounter", 0),
+  const cols = admin ? ["clients", "leads", "comms", "payments", "expenses"] : ["clients", "leads", "comms"];
+  // 3 queries in total (was 10)
+  const [set, usersRes, recs] = await Promise.all([
+    getSettings(["company", "settings", "invoiceCounter"]),
     p.query("SELECT id, name, email, role, active FROM gv_users ORDER BY created_at"),
-    listRecords<Client>("clients"),
-    listRecords<Lead>("leads"),
-    listRecords<Comm>("comms"),
+    listCollections(cols),
   ]);
+  const company = publicCompany((set.company as Company) ?? DEFAULT_COMPANY);
+  const settings = (set.settings as Settings) ?? DEFAULT_SETTINGS;
+  const counter = set.invoiceCounter ?? 0;
+  const clients = recs.clients as Client[];
+  const leads = recs.leads as Lead[];
+  const comms = recs.comms as Comm[];
   const users = usersRes.rows as User[];
   if (admin) {
-    const [payments, expenses] = await Promise.all([listRecords<Payment>("payments"), listRecords<Expense>("expenses")]);
+    const payments = recs.payments as Payment[];
+    const expenses = recs.expenses as Expense[];
     return { company, settings: { ...DEFAULT_SETTINGS, ...settings, plans: normalizePlans(settings.plans) }, invoiceCounter: Number(counter), users, clients, leads, comms, payments, expenses };
   }
   const myClients = clients.filter((c) => c.assignedTo === user.id).map((c) => ({ ...c, totalBilling: 0, plans: (c.plans ?? []).map((p) => ({ ...p, price: 0 })) }));

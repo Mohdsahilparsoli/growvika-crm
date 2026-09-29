@@ -6,7 +6,7 @@ import { FileText } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Badge, Button, Card, PageHeader, Select, StatCard, Td, Th, Empty } from "@/components/ui";
 import { billedToDate, clientBalance, fmtDate, inr, inRange, paidFor, planDecided, RANGE_LABELS, RangeKey, dueFor, isPaid, pendingFor } from "@/lib/format";
-import { paymentInvoicePDF } from "@/lib/pdf";
+import { paymentInvoicePDF } from "@/lib/pdfLazy";
 
 export default function BillingPage() {
   const { db } = useStore();
