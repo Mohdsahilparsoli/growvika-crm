@@ -75,3 +75,37 @@ export function dbError(e: unknown) {
   console.error(e);
   return fail("Server error: " + msg, 500);
 }
+
+// ---- Password reset ----
+// The token carries a fingerprint of the current password hash, so it stops
+// working as soon as the password is changed (single use) or after 30 minutes.
+const fingerprint = (hash: string) => createHash("sha256").update(hash).digest("hex").slice(0, 24);
+
+export async function createResetToken(userId: string, passwordHash: string) {
+  return new SignJWT({ sub: userId, purpose: "reset", fp: fingerprint(passwordHash) })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("30m")
+    .sign(secret());
+}
+
+export async function verifyResetToken(token: string): Promise<string | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    if (payload.purpose !== "reset" || typeof payload.sub !== "string") return null;
+    const p = await db();
+    const r = await p.query("SELECT password_hash, active FROM gv_users WHERE id = $1", [payload.sub]);
+    const u = r.rows[0];
+    if (!u || !u.active || fingerprint(u.password_hash) !== payload.fp) return null;
+    return payload.sub;
+  } catch {
+    return null;
+  }
+}
+
+// Public address of the app, used in reset links (never taken from the request's Host header in production)
+export function appUrl(req: Request) {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return new URL(req.url).origin;
+}

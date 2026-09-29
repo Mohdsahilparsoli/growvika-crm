@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Button, Input } from "@/components/ui";
@@ -68,7 +69,10 @@ export default function LoginPage() {
           {busy && <Loader2 size={16} className="animate-spin" />} Sign in
         </Button>
       </form>
-      <p className="mt-6 text-xs text-slate-500">Forgot your password? Ask your admin to reset it from Team &amp; Settings.</p>
+      <p className="mt-6 text-xs text-slate-500">
+        <Link href={`/reset${email ? `?email=${encodeURIComponent(email)}` : ""}`} className="font-medium text-brand-600 hover:underline">Forgot password?</Link>{" "}
+        Get a reset link on your email. Team members can also ask the admin to reset it.
+      </p>
     </AuthFrame>
   );
 }
