@@ -66,9 +66,15 @@ export interface Payment {
 export type LeadStage =
   | "New Lead"
   | "Contacted"
+  | "No Response"
+  | "Interested"
+  | "Meeting Scheduled"
   | "Meeting Cancelled"
   | "Meeting Done"
+  | "Demo Sent"
   | "Proposal Sent"
+  | "Negotiation"
+  | "On Hold"
   | "Won"
   | "Lost";
 
@@ -155,9 +161,15 @@ export interface DB {
 export const LEAD_STAGES: LeadStage[] = [
   "New Lead",
   "Contacted",
+  "No Response",
+  "Interested",
+  "Meeting Scheduled",
   "Meeting Cancelled",
   "Meeting Done",
+  "Demo Sent",
   "Proposal Sent",
+  "Negotiation",
+  "On Hold",
   "Won",
   "Lost",
 ];

@@ -3,7 +3,7 @@ import { db, deleteRecord, deleteWhere, getRecord, getSetting, listRecords, next
 import { SessionUser } from "./auth";
 import { DEFAULT_COMPANY, DEFAULT_SETTINGS, normalizePlans } from "@/lib/defaults";
 import { normalizePhone } from "@/lib/format";
-import { Client, Comm, Company, DB, Expense, Lead, Payment, Settings, User } from "@/lib/types";
+import { LEAD_STAGES, Client, Comm, Company, DB, Expense, Lead, Payment, Settings, User } from "@/lib/types";
 
 export const COLLECTIONS = ["clients", "payments", "leads", "comms", "expenses"] as const;
 export type Collection = (typeof COLLECTIONS)[number];
@@ -94,7 +94,7 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
         phone: normalizePhone(str(raw.phone, 20)),
         source: str(raw.source, 100),
         service: str(raw.service, 100),
-        stage: pick(raw.stage, ["New Lead", "Contacted", "Meeting Cancelled", "Meeting Done", "Proposal Sent", "Won", "Lost"] as const, "New Lead"),
+        stage: pick(raw.stage, LEAD_STAGES, "New Lead"),
         followUp: date(raw.followUp),
         assignedTo: str(raw.assignedTo, 100),
         note: str(raw.note, 5000),

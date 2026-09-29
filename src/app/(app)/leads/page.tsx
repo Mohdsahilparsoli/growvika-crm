@@ -12,9 +12,15 @@ import { fmtDate, todayISO, normalizePhone, telLink } from "@/lib/format";
 const stageStyle: Record<LeadStage, string> = {
   "New Lead": "border-t-sky-500",
   Contacted: "border-t-violet-500",
+  "No Response": "border-t-slate-500",
+  Interested: "border-t-cyan-500",
+  "Meeting Scheduled": "border-t-indigo-500",
   "Meeting Cancelled": "border-t-rose-500",
   "Meeting Done": "border-t-amber-500",
+  "Demo Sent": "border-t-fuchsia-500",
   "Proposal Sent": "border-t-orange-500",
+  Negotiation: "border-t-yellow-500",
+  "On Hold": "border-t-stone-400",
   Won: "border-t-emerald-500",
   Lost: "border-t-slate-400",
 };
@@ -88,7 +94,22 @@ export default function LeadsPage() {
         }
       />
 
-      <p className="mb-3 text-xs text-slate-500">Drag a card to another stage, or use the arrows.</p>
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {LEAD_STAGES.map((stage) => {
+          const n = leads.filter((l) => l.stage === stage).length;
+          return (
+            <button
+              key={stage}
+              type="button"
+              onClick={() => document.getElementById(`stage-${stage}`)?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })}
+              className={`rounded-full border px-2.5 py-1 text-xs ${n ? "border-brand-200 bg-brand-50 font-medium text-brand-700" : "border-slate-200 bg-white text-slate-500"} hover:border-brand-400`}
+            >
+              {stage} <span className="tabular-nums">{n}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mb-3 text-xs text-slate-500">Click a stage above to jump to it. Drag a card to another stage, or use the arrows.</p>
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
@@ -96,13 +117,14 @@ export default function LeadsPage() {
           return (
             <div
               key={stage}
+              id={`stage-${stage}`}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => {
                 const l = db.leads.find((x) => x.id === dragId);
                 if (l && l.stage !== stage) move(l, stage);
                 setDragId(null);
               }}
-              className={`w-72 shrink-0 rounded-xl border border-t-4 border-slate-200 bg-slate-100/60 ${stageStyle[stage]}`}
+              className={`w-64 shrink-0 scroll-ml-2 rounded-xl border border-t-4 border-slate-200 bg-slate-100/60 ${stageStyle[stage]}`}
             >
               <div className="flex items-center justify-between px-3 py-2.5">
                 <h3 className="text-sm font-medium text-slate-800">{stage}</h3>
