@@ -94,7 +94,7 @@ function clean(col: Collection, raw: Record<string, unknown>, id: string): Recor
         phone: normalizePhone(str(raw.phone, 20)),
         source: str(raw.source, 100),
         service: str(raw.service, 100),
-        stage: pick(raw.stage, ["New Lead", "Contacted", "Meeting Done", "Proposal Sent", "Won", "Lost"] as const, "New Lead"),
+        stage: pick(raw.stage, ["New Lead", "Contacted", "Meeting Cancelled", "Meeting Done", "Proposal Sent", "Won", "Lost"] as const, "New Lead"),
         followUp: date(raw.followUp),
         assignedTo: str(raw.assignedTo, 100),
         note: str(raw.note, 5000),

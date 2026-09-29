@@ -12,6 +12,7 @@ import { fmtDate, todayISO, normalizePhone, telLink } from "@/lib/format";
 const stageStyle: Record<LeadStage, string> = {
   "New Lead": "border-t-sky-500",
   Contacted: "border-t-violet-500",
+  "Meeting Cancelled": "border-t-rose-500",
   "Meeting Done": "border-t-amber-500",
   "Proposal Sent": "border-t-orange-500",
   Won: "border-t-emerald-500",
