@@ -64,13 +64,8 @@ export default function Shell({ children }: { children: ReactNode }) {
     );
   }
 
-  if (status !== "ready" || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-slate-500">
-        <Loader2 className="animate-spin" size={16} /> Loading…
-      </div>
-    );
-  }
+  // Data normally arrives with the page itself; this blank screen only shows if it had to be re-fetched
+  if (status !== "ready" || !user) return <div className="min-h-screen bg-slate-50" />;
 
   const items = NAV.filter((n) => isAdmin || !n.admin);
   const current = NAV.find((n) => (n.href === "/" ? path === "/" : path.startsWith(n.href)));

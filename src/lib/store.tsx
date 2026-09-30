@@ -117,10 +117,18 @@ function applySaved(d: DB, r: PushResult): DB {
   return nd;
 }
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [db, setDb] = useState<DB>(emptyDB);
-  const [user, setUser] = useState<User | null>(null);
-  const [status, setStatus] = useState<Status>("loading");
+export function StoreProvider({
+  children,
+  initial,
+  signedOut = false,
+}: {
+  children: ReactNode;
+  initial?: { user: User; db: DB }; // data rendered on the server with the page
+  signedOut?: boolean;
+}) {
+  const [db, setDb] = useState<DB>(() => initial?.db ?? emptyDB());
+  const [user, setUser] = useState<User | null>(initial?.user ?? null);
+  const [status, setStatus] = useState<Status>(initial ? "ready" : signedOut ? "signed-out" : "loading");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const dbRef = useRef(db);
@@ -128,8 +136,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const pending = useRef(0);
   const needReload = useRef(false);
 
-  const lastFetch = useRef(0);
-  const userRef = useRef<User | null>(null);
+  const lastFetch = useRef(initial ? Date.now() : 0);
+  const userRef = useRef<User | null>(initial?.user ?? null);
 
   const refresh = useCallback(async () => {
     try {
@@ -154,9 +162,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Only fetch in the browser if the server could not include the data
+  const hadInitial = useRef(!!initial || signedOut);
   useEffect(() => {
-    refresh();
+    if (!hadInitial.current) refresh();
   }, [refresh]);
+
+  // iPhone Safari: stop pinch-zoom gestures (the page should behave like an app)
+  useEffect(() => {
+    const stop = (e: Event) => e.preventDefault();
+    document.addEventListener("gesturestart", stop);
+    return () => document.removeEventListener("gesturestart", stop);
+  }, []);
 
   // See teammates' changes: reload when you come back to the tab after 5+ minutes
   useEffect(() => {

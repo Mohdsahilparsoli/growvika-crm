@@ -2,16 +2,13 @@ import "server-only";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { createHash } from "crypto";
-import { db, dbUrl } from "./db";
+import { db } from "./db";
+import { SESSION_COOKIE, sessionSecret, verifySessionToken } from "./token";
 import { User } from "@/lib/types";
 
-const COOKIE = "gv_session";
+const COOKIE = SESSION_COOKIE;
 const MAX_AGE = 60 * 60 * 24 * 30;
-
-function secret() {
-  const raw = process.env.AUTH_SECRET || createHash("sha256").update("growvika:" + dbUrl()).digest("hex");
-  return new TextEncoder().encode(raw);
-}
+const secret = sessionSecret;
 
 export type SessionUser = Omit<User, "password">;
 
@@ -40,10 +37,11 @@ export async function currentUser(): Promise<SessionUser | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
   if (!token) return null;
+  const sub = await verifySessionToken(token);
+  if (!sub) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
     const p = await db();
-    const r = await p.query("SELECT id, name, email, role, active FROM gv_users WHERE id = $1", [payload.sub]);
+    const r = await p.query("SELECT id, name, email, role, active FROM gv_users WHERE id = $1", [sub]);
     const u = r.rows[0];
     if (!u || !u.active) return null;
     return u as SessionUser;

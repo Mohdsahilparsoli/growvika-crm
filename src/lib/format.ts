@@ -21,11 +21,11 @@ export const monthLabel = (ym: string) => {
   return `${MONTHS[m - 1]} ${String(y).slice(2)}`;
 };
 
-export const todayISO = () => {
-  const d = new Date();
-  const off = d.getTimezoneOffset();
-  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
-};
+// GrowVika works in India time. Using IST everywhere means the server and the
+// phone always agree on "today" (the server itself runs on UTC).
+export const nowIST = () => new Date(Date.now() + 330 * 60000); // read with getUTC* methods
+
+export const todayISO = () => nowIST().toISOString().slice(0, 10);
 
 export const isPaid = (p: { status?: string }) => p.status !== "Due";
 
@@ -56,14 +56,14 @@ export type RangeKey = "all" | "this" | "last" | "year";
 
 export const inRange = (iso: string, range: RangeKey) => {
   if (range === "all") return true;
-  const now = new Date();
+  const now = nowIST();
   const [y, m] = iso.split("-").map(Number);
-  if (range === "this") return y === now.getFullYear() && m === now.getMonth() + 1;
+  if (range === "this") return y === now.getUTCFullYear() && m === now.getUTCMonth() + 1;
   if (range === "last") {
-    const ld = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return y === ld.getFullYear() && m === ld.getMonth() + 1;
+    const ld = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    return y === ld.getUTCFullYear() && m === ld.getUTCMonth() + 1;
   }
-  return y === now.getFullYear();
+  return y === now.getUTCFullYear();
 };
 
 export const RANGE_LABELS: Record<RangeKey, string> = {

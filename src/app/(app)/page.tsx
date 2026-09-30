@@ -5,7 +5,7 @@ import { Users, TrendingUp, Clock, Wallet, Target, PhoneCall } from "lucide-reac
 import dynamic from "next/dynamic";
 import { useStore } from "@/lib/store";
 import { Badge, Card, PageHeader, StatCard, Empty } from "@/components/ui";
-import { upcomingRenewals, billedToDate, isPaid, pendingFor, formatPhone, telLink, paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
+import { nowIST, upcomingRenewals, billedToDate, isPaid, pendingFor, formatPhone, telLink, paidFor, planDecided, clientBalance, fmtDate, inr, inRange, monthLabel, todayISO, totalExpense, totalIncome } from "@/lib/format";
 
 // Charts library loads separately, after the page is already on screen
 const IncomeChart = dynamic(() => import("@/components/charts/IncomeChart"), { ssr: false, loading: () => <div className="h-full animate-pulse rounded-lg bg-slate-50" /> });
@@ -37,10 +37,10 @@ export default function Dashboard() {
   const renewals = upcomingRenewals(db, isAdmin ? db.clients : db.clients.filter((c) => c.assignedTo === user!.id)).filter((r) => r.daysLeft <= 30);
 
   const months: string[] = [];
-  const now = new Date();
+  const now = nowIST();
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    months.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
   }
   const chart = months.map((m) => ({
     month: monthLabel(m),
