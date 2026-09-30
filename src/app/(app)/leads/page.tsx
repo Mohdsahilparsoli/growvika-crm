@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CalendarClock, ChevronLeft, ChevronRight, Phone, Plus, UserPlus, Trash2 } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
 import { LEAD_STAGES, Lead, LeadStage } from "@/lib/types";
-import { Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Textarea, PhoneInput } from "@/components/ui";
+import { Badge, Button, Card, Fab, Field, Input, Modal, PageHeader, Select, Textarea, PhoneInput } from "@/components/ui";
 import { emptyClient } from "@/components/ClientForm";
 import { fmtDate, todayISO, normalizePhone, telLink } from "@/lib/format";
 
@@ -89,12 +89,12 @@ export default function LeadsPage() {
             {isAdmin && (
               <Select value={who} onChange={(e) => setWho(e.target.value)} options={[{ value: "all", label: "Whole team" }, ...db.users.map((u) => ({ value: u.id, label: u.name }))]} className="w-44" />
             )}
-            <Button onClick={openNew}><Plus size={16} /> New lead</Button>
+            <Button onClick={openNew} className="max-lg:hidden"><Plus size={16} /> New lead</Button>
           </>
         }
       />
 
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <div className="no-scrollbar -mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
         {LEAD_STAGES.map((stage) => {
           const n = leads.filter((l) => l.stage === stage).length;
           return (
@@ -102,16 +102,16 @@ export default function LeadsPage() {
               key={stage}
               type="button"
               onClick={() => document.getElementById(`stage-${stage}`)?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" })}
-              className={`rounded-full border px-2.5 py-1 text-xs ${n ? "border-brand-200 bg-brand-50 font-medium text-brand-700" : "border-slate-200 bg-white text-slate-500"} hover:border-brand-400`}
+              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs sm:px-2.5 sm:py-1 ${n ? "border-brand-200 bg-brand-50 font-medium text-brand-700" : "border-slate-200 bg-white text-slate-500"} hover:border-brand-400`}
             >
               {stage} <span className="tabular-nums">{n}</span>
             </button>
           );
         })}
       </div>
-      <p className="mb-3 text-xs text-slate-500">Click a stage above to jump to it. Drag a card to another stage, or use the arrows.</p>
+      <p className="mb-3 text-xs text-slate-500"><span className="lg:hidden">Swipe sideways to see every stage. Tap a stage above to jump to it; use the arrows on a card to move it.</span><span className="hidden lg:inline">Click a stage above to jump to it. Drag a card to another stage, or use the arrows.</span></p>
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-4 sm:mx-0 sm:snap-none sm:gap-4 sm:px-0">
         {LEAD_STAGES.map((stage) => {
           const col = leads.filter((l) => l.stage === stage);
           return (
@@ -124,7 +124,7 @@ export default function LeadsPage() {
                 if (l && l.stage !== stage) move(l, stage);
                 setDragId(null);
               }}
-              className={`w-64 shrink-0 scroll-ml-2 rounded-xl border border-t-4 border-slate-200 bg-slate-100/60 ${stageStyle[stage]}`}
+              className={`w-[84vw] shrink-0 snap-start scroll-ml-2 rounded-2xl sm:w-64 sm:rounded-xl border border-t-4 border-slate-200 bg-slate-100/60 ${stageStyle[stage]}`}
             >
               <div className="flex items-center justify-between px-3 py-2.5">
                 <h3 className="text-sm font-medium text-slate-800">{stage}</h3>
@@ -172,6 +172,8 @@ export default function LeadsPage() {
           );
         })}
       </div>
+
+      <Fab onClick={openNew} label="New lead" />
 
       <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? "Edit lead" : "New lead"}>
         {form && (

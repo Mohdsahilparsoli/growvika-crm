@@ -2,7 +2,8 @@
 
 export default function AuthFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-[100dvh] flex-col bg-navy-900 lg:flex-row">
+      {/* Desktop: brand panel */}
       <div className="hidden w-1/2 flex-col justify-between bg-navy-900 p-12 lg:flex">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-white.png" alt="GrowVika" className="h-9 w-auto self-start" />
@@ -18,14 +19,22 @@ export default function AuthFrame({ children }: { children: React.ReactNode }) {
         </div>
         <p className="text-xs text-slate-500">GrowVika CRM</p>
       </div>
-      <div className="flex flex-1 items-center justify-center bg-slate-50 p-6">
-        <div className="w-full max-w-sm">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-dark.png" alt="GrowVika" className="mb-10 h-7 w-auto lg:hidden" />
-          {children}
-        </div>
+
+      {/* Phone: app-style welcome header */}
+      <div className="pt-safe px-6 pb-10 lg:hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-white.png" alt="GrowVika" className="mt-10 h-8 w-auto" />
+        <p className="mt-6 text-2xl font-semibold leading-snug text-white">
+          Clients, billing and money,
+          <br />
+          <span className="text-brand-400">all in one place.</span>
+        </p>
+      </div>
+
+      {/* Form: a rounded sheet on phones, the right half on desktop */}
+      <div className="pb-safe flex flex-1 justify-center rounded-t-[2rem] bg-slate-50 px-6 pt-8 lg:items-center lg:rounded-none lg:p-6">
+        <div className="animate-page w-full max-w-sm">{children}</div>
       </div>
     </div>
   );
 }
-

@@ -25,17 +25,44 @@ export default function BillingPage() {
     <div>
       <PageHeader title="Billing" subtitle="Billing for all clients in one place. Click a client to see its full history and Full Bill." />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:first-child]:col-span-2 sm:[&>*:first-child]:col-span-1">
         <StatCard label="Total billed till date" value={inr(totalBilling)} hint={`${db.clients.length} clients`} />
         <StatCard label="Total received" value={inr(received)} tone="good" hint={`${db.payments.length - dueCount} payments`} />
         <StatCard label="Total pending" value={inr(pending)} tone="bad" hint={dueCount ? `${dueCount} unpaid bills` : undefined} />
       </div>
 
-      <Card className="mt-6 overflow-hidden">
+      <Card className="mt-4 overflow-hidden lg:mt-6">
         <div className="border-b border-slate-100 px-4 py-3">
           <h3 className="font-medium text-slate-900">Billing by client</h3>
         </div>
-        <div className="overflow-x-auto">
+        {/* Phones: one row per client */}
+        <ul className="divide-y divide-slate-100 md:hidden">
+          {db.clients.map((c) => {
+            const paid = paidFor(db, c.id);
+            const decided = planDecided(c);
+            const due = dueFor(db, c.id);
+            const billed = billedToDate(db, c);
+            const bal = Math.max(decided ? billed - paid : 0, due);
+            const pct = decided && billed ? Math.min(100, (paid / billed) * 100) : 0;
+            return (
+              <li key={c.id}>
+                <Link href={`/clients/${c.id}?tab=billing`} className="block px-4 py-3 active:bg-slate-50">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-[15px] font-medium text-slate-900">{c.business}</p>
+                    <span className={`shrink-0 text-[15px] font-semibold tabular-nums ${bal > 0 ? "text-red-600" : decided ? "text-emerald-600" : "text-amber-600"}`}>
+                      {bal > 0 ? inr(bal) : decided ? "Paid" : "Not decided"}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-3">
+                    <div className="h-1.5 flex-1 rounded-full bg-slate-100"><div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${pct}%` }} /></div>
+                    <span className="shrink-0 text-xs text-slate-500">{inr(paid)}{decided ? ` of ${inr(billed)}` : " advance"}</span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[640px]">
             <thead className="bg-slate-50">
               <tr><Th>Client</Th><Th right>Billed till date</Th><Th right>Received</Th><Th right>Due</Th><Th right>Status</Th></tr>
@@ -68,7 +95,7 @@ export default function BillingPage() {
         </div>
       </Card>
 
-      <Card className="mt-6 overflow-hidden">
+      <Card className="mt-4 overflow-hidden lg:mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div>
             <h3 className="font-medium text-slate-900">All payments</h3>
@@ -77,7 +104,30 @@ export default function BillingPage() {
           <Select value={range} onChange={(e) => setRange(e.target.value as RangeKey)} options={(Object.keys(RANGE_LABELS) as RangeKey[]).map((k) => ({ value: k, label: RANGE_LABELS[k] }))} className="w-44" />
         </div>
         {recent.length === 0 ? <Empty text="No payments in this period" /> : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-slate-100 md:hidden">
+            {recent.map((p) => {
+              const c = db.clients.find((x) => x.id === p.clientId);
+              return (
+                <li key={p.id} className="flex items-center gap-3 px-4 py-3">
+                  <Link href={c ? `/clients/${c.id}?tab=billing` : "#"} className="min-w-0 flex-1 active:opacity-60">
+                    <p className="truncate text-[15px] font-medium text-slate-900">{c?.business ?? "—"}</p>
+                    <p className="truncate text-xs text-slate-500">{fmtDate(p.date)} · <span className="font-mono">{p.invoiceNo}</span>{p.service ? ` · ${p.service}` : ""}</p>
+                  </Link>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[15px] font-semibold tabular-nums text-slate-900">{inr(p.amount)}</p>
+                    <p className={`text-xs ${isPaid(p) ? "text-slate-500" : "font-medium text-red-600"}`}>{isPaid(p) ? p.mode : "Due"}</p>
+                  </div>
+                  {c && (
+                    <button onClick={() => paymentInvoicePDF(db, p)} aria-label="Download PDF" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 active:bg-slate-200">
+                      <FileText size={16} />
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[640px]">
               <thead className="bg-slate-50">
                 <tr><Th>Date</Th><Th>Invoice</Th><Th>Client</Th><Th>For</Th><Th>Mode</Th><Th right>Amount</Th><Th right></Th></tr>
@@ -100,6 +150,7 @@ export default function BillingPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>

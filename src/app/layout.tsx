@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "GrowVika CRM",
   description: "GrowVika client management, billing and company accounts",
   applicationName: "GrowVika CRM",
-  appleWebApp: { capable: true, title: "GrowVika", statusBarStyle: "black" },
+  appleWebApp: { capable: true, title: "GrowVika", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 };
 
@@ -17,6 +17,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover", // use the full screen on notch iPhones; safe areas are padded in CSS
   themeColor: "#03081B",
 };
 

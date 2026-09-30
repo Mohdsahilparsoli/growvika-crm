@@ -5,7 +5,7 @@ import { Download, Plus, Search, Trash2, TrendingDown, TrendingUp, Wallet } from
 import dynamic from "next/dynamic";
 import { useStore, uid } from "@/lib/store";
 import { Expense, PAY_MODES, PayMode } from "@/lib/types";
-import { Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Select, StatCard, Td, Textarea, Th } from "@/components/ui";
+import { Badge, Button, Card, Empty, Field, Input, Modal, PageHeader, Select, StatCard, Td, Textarea, Th, Fab } from "@/components/ui";
 import { fmtDate, inr, inRange, RANGE_LABELS, RangeKey, todayISO, totalExpense, totalIncome, isPaid } from "@/lib/format";
 import { expenseReportPDF } from "@/lib/pdfLazy";
 
@@ -49,6 +49,11 @@ export default function ExpensesPage() {
     setForm(null);
   };
 
+  const newExpense = () => {
+    setErr("");
+    setForm({ id: "", date: todayISO(), amount: 0, where: "", why: "", category: db.settings.expenseCategories[0] ?? "Other", mode: "UPI", note: "" });
+  };
+
   return (
     <div>
       <PageHeader
@@ -56,18 +61,18 @@ export default function ExpensesPage() {
         subtitle="What came in, where and why it was spent, and what's left"
         actions={
           <>
-            <Select value={range} onChange={(e) => setRange(e.target.value as RangeKey)} options={(Object.keys(RANGE_LABELS) as RangeKey[]).map((k) => ({ value: k, label: RANGE_LABELS[k] }))} className="w-44" />
+            <Select value={range} onChange={(e) => setRange(e.target.value as RangeKey)} options={(Object.keys(RANGE_LABELS) as RangeKey[]).map((k) => ({ value: k, label: RANGE_LABELS[k] }))} className="w-40 shrink-0 lg:w-44" />
             <Button variant="secondary" onClick={() => expenseReportPDF(db, RANGE_LABELS[range], income, inPeriod)}>
               <Download size={16} /> Report PDF
             </Button>
-            <Button onClick={() => { setErr(""); setForm({ id: "", date: todayISO(), amount: 0, where: "", why: "", category: db.settings.expenseCategories[0] ?? "Other", mode: "UPI", note: "" }); }}>
+            <Button onClick={newExpense} className="max-lg:hidden">
               <Plus size={16} /> Add expense
             </Button>
           </>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:first-child]:col-span-2 sm:[&>*:first-child]:col-span-1">
         <StatCard label="Total income" value={inr(income)} tone="good" hint={`${RANGE_LABELS[range]} · client payments`} icon={<TrendingUp size={18} />} />
         <StatCard label="Total expenses" value={inr(spent)} tone="bad" hint={`${inPeriod.length} entries`} icon={<TrendingDown size={18} />} />
         <StatCard
@@ -92,7 +97,7 @@ export default function ExpensesPage() {
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card className="p-5">
+        <Card className="p-4 lg:p-5">
           <h3 className="font-medium text-slate-900">Where the money goes</h3>
           <p className="text-xs text-slate-500">Expenses by category</p>
           {byCat.length === 0 ? <Empty text="No expenses" /> : (
@@ -127,7 +132,23 @@ export default function ExpensesPage() {
             <Select value={cat} onChange={(e) => setCat(e.target.value)} options={[{ value: "All", label: "All categories" }, ...db.settings.expenseCategories]} className="w-full py-1.5 sm:w-44" />
           </div>
           {list.length === 0 ? <Empty text="No entries found" /> : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Phones: tap an entry to open it */}
+            <ul className="divide-y divide-slate-100 md:hidden">
+              {list.map((e) => (
+                <li key={e.id}>
+                  <button onClick={() => { setErr(""); setForm(e); }} className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left active:bg-slate-50">
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] font-medium text-slate-900">{e.where}</p>
+                      <p className="line-clamp-2 text-xs text-slate-500">{e.why}</p>
+                      <p className="mt-1 text-xs text-slate-400">{fmtDate(e.date)} · {e.category} · {e.mode}</p>
+                    </div>
+                    <span className="shrink-0 text-[15px] font-semibold tabular-nums text-red-600">− {inr(e.amount)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[640px]">
                 <thead className="bg-slate-50">
                   <tr><Th>Date</Th><Th>Where</Th><Th>Why</Th><Th>Category</Th><Th right>Amount</Th></tr>
@@ -145,9 +166,12 @@ export default function ExpensesPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </Card>
       </div>
+
+      <Fab onClick={newExpense} label="Add expense" />
 
       <Modal open={!!form} onClose={() => setForm(null)} title={form?.id ? "Expense details" : "New expense"}>
         {form && (

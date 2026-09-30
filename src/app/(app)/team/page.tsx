@@ -105,7 +105,26 @@ export default function TeamPage() {
       />
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Phones: one row per team member */}
+        <ul className="divide-y divide-slate-100 md:hidden">
+          {db.users.map((u) => {
+            const n = counts(u.id);
+            return (
+              <li key={u.id} className={`flex items-center gap-3 px-4 py-3 ${u.active ? "" : "opacity-60"}`}>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 font-semibold text-brand-700">{u.name.charAt(0)}</div>
+                <button onClick={() => { setErr(""); setForm({ ...u, password: "" }); }} className="min-w-0 flex-1 text-left active:opacity-60">
+                  <p className="truncate text-[15px] font-medium text-slate-900">{u.name}{u.id === user!.id && <span className="ml-1 text-xs font-normal text-slate-400">(you)</span>}</p>
+                  <p className="truncate text-xs text-slate-500">{u.email}</p>
+                  <p className="text-xs text-slate-400">{u.role === "admin" ? "Admin" : "Employee"} · {n.clients} clients · {n.leads} open leads</p>
+                </button>
+                <button disabled={u.id === user!.id} onClick={() => toggle(u)} className="shrink-0 disabled:cursor-not-allowed">
+                  {u.active ? <Badge tone="green">Active</Badge> : <Badge tone="red">Inactive</Badge>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[640px]">
             <thead className="bg-slate-50">
               <tr><Th>Name</Th><Th>Email</Th><Th>Role</Th><Th right>Clients</Th><Th right>Open leads</Th><Th right>Status</Th><Th right></Th></tr>
@@ -135,12 +154,12 @@ export default function TeamPage() {
           </table>
         </div>
         <p className="border-t border-slate-100 px-4 py-2.5 text-xs text-slate-500">
-          Employees only see their assigned clients and leads. Billing, Company Account and this page are admin-only. Click a status to activate or deactivate a login.
+          Employees only see their assigned clients and leads. Billing, Company Account and this page are admin-only. Tap a status to activate or deactivate a login.
         </p>
       </Card>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card className="p-5">
+      <div className="mt-4 grid gap-4 lg:mt-6 lg:grid-cols-2 lg:gap-6">
+        <Card className="p-4 lg:p-5">
           <h3 className="font-medium text-slate-900">Company details</h3>
           <p className="text-xs text-slate-500">Shown on every invoice and report PDF</p>
           <form
@@ -170,7 +189,7 @@ export default function TeamPage() {
           </form>
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-4 lg:p-5">
           <h3 className="font-medium text-slate-900">Invoice settings</h3>
           <p className="text-xs text-slate-500">Used for new invoices and GST calculation</p>
           <form

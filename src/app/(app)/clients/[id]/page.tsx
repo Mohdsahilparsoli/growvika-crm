@@ -47,10 +47,10 @@ export default function ClientDetail() {
   const paid = paidFor(db, c.id);
   const decided = planDecided(c);
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: Tab; label: string; short?: string }[] = [
     { key: "profile", label: "Profile" },
     ...(isAdmin ? [{ key: "billing" as Tab, label: "Billing" }] : []),
-    { key: "comms", label: `Communication (${comms.length})` },
+    { key: "comms", label: `Communication (${comms.length})`, short: `History (${comms.length})` },
   ];
 
   const saveComm = (e: React.FormEvent) => {
@@ -75,11 +75,11 @@ export default function ClientDetail() {
 
   return (
     <div>
-      <Link href="/clients" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
+      <Link href="/clients" className="mb-4 hidden items-center gap-1 lg:inline-flex text-sm text-slate-500 hover:text-slate-800">
         <ArrowLeft size={16} /> All clients
       </Link>
 
-      <Card className="p-5">
+      <Card className="p-4 lg:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xl font-semibold text-brand-700">
@@ -93,25 +93,29 @@ export default function ClientDetail() {
               <p className="text-sm text-slate-500">{c.name} · Client since {fmtDate(c.joinedAt)}</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <a href={telLink(c.phone)}><Button variant="secondary"><Phone size={16} /> Call</Button></a>
-            <a href={waLink(c.whatsapp || c.phone, `Hello ${c.name},`)} target="_blank" rel="noreferrer">
-              <Button variant="whatsapp"><MessageCircle size={16} /> WhatsApp</Button>
+          {/* Phones: three equal quick-action buttons */}
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+            <a href={telLink(c.phone)} className="contents sm:block"><Button variant="secondary" className="w-full"><Phone size={16} /> Call</Button></a>
+            <a href={waLink(c.whatsapp || c.phone, `Hello ${c.name},`)} target="_blank" rel="noreferrer" className="contents sm:block">
+              <Button variant="whatsapp" className="w-full"><MessageCircle size={16} /> <span className="sm:inline">WhatsApp</span></Button>
             </a>
             <Button variant="secondary" onClick={() => setEditing(true)}><Pencil size={16} /> Edit</Button>
           </div>
         </div>
 
-        <div className="mt-5 flex gap-1 overflow-x-auto border-b border-slate-200">
+        {/* Phones: iOS-style segmented control. Desktop: underline tabs */}
+        <div className="mt-4 grid grid-flow-col gap-1 rounded-xl bg-slate-100 p-1 lg:mt-5 lg:flex lg:gap-1 lg:rounded-none lg:border-b lg:border-slate-200 lg:bg-transparent lg:p-0">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
-                tab === t.key ? "border-brand-500 text-brand-700" : "border-transparent text-slate-500 hover:text-slate-800"
+              className={`whitespace-nowrap rounded-lg px-2 py-2 text-[13px] font-medium transition lg:-mb-px lg:rounded-none lg:border-b-2 lg:px-4 lg:text-sm ${
+                tab === t.key
+                  ? "bg-white text-slate-900 shadow-sm lg:border-brand-500 lg:bg-transparent lg:text-brand-700 lg:shadow-none"
+                  : "text-slate-500 lg:border-transparent lg:hover:text-slate-800"
               }`}
             >
-              {t.label}
+              {t.short ? <><span className="lg:hidden">{t.short}</span><span className="hidden lg:inline">{t.label}</span></> : t.label}
             </button>
           ))}
         </div>
@@ -120,7 +124,7 @@ export default function ClientDetail() {
       <div className="mt-4">
         {tab === "profile" && (
           <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="p-5 lg:col-span-2">
+            <Card className="p-4 lg:p-5 lg:col-span-2">
               <h3 className="mb-4 font-medium text-slate-900">Client details</h3>
               <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                 {[
@@ -140,13 +144,36 @@ export default function ClientDetail() {
                 ))}
               </dl>
             </Card>
-            <Card className="p-5 lg:col-span-2">
+            <Card className="p-4 lg:p-5 lg:col-span-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-medium text-slate-900">Plan &amp; services</h3>
                 {decided ? <Badge tone="green">Plan decided</Badge> : <Badge tone="amber">Plan not decided yet</Badge>}
               </div>
               {decided && clientPlans(c).length > 0 ? (
-                <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
+                <>
+                {/* Phones: one row per plan */}
+                <ul className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 md:hidden">
+                  {clientPlans(c).map((p) => {
+                    const sc = planSchedule(p, c);
+                    return (
+                      <li key={p.id} className="flex items-start justify-between gap-3 px-3.5 py-3">
+                        <div className="min-w-0">
+                          <p className="text-[15px] font-medium text-slate-900">{p.name}</p>
+                          <p className="text-xs text-slate-500">{p.category}{p.cycle ? ` · ${p.cycle}` : ""}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Start {fmtDate(sc.start)}
+                            {sc.nextDate ? <> · <span className="font-medium text-brand-600">Renews {fmtDate(sc.nextDate)}</span></> : sc.ended ? " · Stopped" : ""}
+                          </p>
+                        </div>
+                        {isAdmin && <p className="shrink-0 text-[15px] font-semibold tabular-nums text-slate-900">{inr(p.price)}</p>}
+                      </li>
+                    );
+                  })}
+                  {isAdmin && clientPlans(c).length > 1 && (
+                    <li className="flex justify-between bg-slate-50 px-3.5 py-2.5 text-sm"><span className="font-medium">Total package</span><span className="font-semibold tabular-nums">{inr(c.totalBilling)}</span></li>
+                  )}
+                </ul>
+                <div className="mt-4 hidden overflow-hidden rounded-lg border border-slate-200 md:block">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <tr><th className="px-3 py-2 font-medium">Plan</th><th className="px-3 py-2 font-medium">Billing cycle</th><th className="px-3 py-2 font-medium">Start</th><th className="px-3 py-2 font-medium">Next renewal</th>{isAdmin && <th className="px-3 py-2 text-right font-medium">Amount</th>}</tr>
@@ -169,6 +196,7 @@ export default function ClientDetail() {
                     )}
                   </table>
                 </div>
+                </>
               ) : (
                 <p className="mt-4 text-sm text-slate-500">{decided ? "No plan added yet" : "Plan to be decided"}</p>
               )}
@@ -186,12 +214,12 @@ export default function ClientDetail() {
               )}
             </Card>
             <div className="space-y-4">
-              <Card className="p-5">
+              <Card className="p-4 lg:p-5">
                 <h3 className="font-medium text-slate-900">Notes</h3>
                 <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{c.notes || "No notes"}</p>
               </Card>
               {isAdmin && (
-                <Card className="p-5">
+                <Card className="p-4 lg:p-5">
                   <h3 className="font-medium text-slate-900">Billing summary</h3>
                   {decided ? (
                     <div className="mt-3 space-y-2 text-sm">

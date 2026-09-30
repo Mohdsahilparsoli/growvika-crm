@@ -109,20 +109,20 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             {pays.length} {pays.length === 1 ? "bill" : "bills"}{dueCount ? ` (${dueCount} due)` : ""} · {c.gstApplicable && db.company.gst ? `GST invoice (${db.settings.gstRate}%)` : "Invoice without GST"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <Button onClick={openNew} className="order-first col-span-2 sm:order-last">
+            <Plus size={16} /> Add Payment
+          </Button>
           <Button variant="secondary" onClick={() => fullBillPDF(db, clientId)} disabled={!pays.length}>
-            <Download size={16} /> Download Full Bill
+            <Download size={16} /> <span className="sm:hidden">Full Bill</span><span className="hidden sm:inline">Download Full Bill</span>
           </Button>
           <Button variant="secondary" onClick={() => setSend({ kind: "full" })} disabled={!pays.length}>
-            <Send size={16} /> Send Full Bill
-          </Button>
-          <Button onClick={openNew}>
-            <Plus size={16} /> Add Payment
+            <Send size={16} /> <span className="sm:hidden">Send Bill</span><span className="hidden sm:inline">Send Full Bill</span>
           </Button>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:first-child]:col-span-2 sm:[&>*:first-child]:col-span-1">
         {decided ? (
           <>
             <StatCard label={hasRecurring ? "Billed till date" : "Total billing"} value={inr(billed)} hint={nextRenewal ? `Next renewal ${fmtDate(nextRenewal)}` : planSummary(c) || undefined} />
@@ -148,7 +148,45 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
             <h3 className="font-medium text-slate-900">Plan-wise summary</h3>
             <p className="text-xs text-slate-500">Payments are counted against the plan chosen on each bill. Renewing plans are billed once per cycle from their start date.</p>
           </div>
-          <div className="overflow-x-auto">
+          <ul className="divide-y divide-slate-100 md:hidden">
+            {breakdown.rows.map((r) => (
+              <li key={r.label} className="px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-medium text-slate-900">{r.label}</p>
+                    <p className="text-xs text-slate-500">
+                      {r.cycle || "—"}{r.schedule.recurring ? ` · ${inr(r.price)} / cycle · ${periodLabel(r.schedule, r.cycle)}` : ""}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 text-[15px] font-semibold tabular-nums ${r.remaining > 0 ? "text-red-600" : "text-emerald-600"}`}>{r.remaining > 0 ? inr(r.remaining) : "Paid"}</span>
+                </div>
+                <div className="mt-2.5 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 text-center">
+                  <div><p className="text-[10px] uppercase tracking-wide text-slate-500">Billed</p><p className="text-sm font-medium tabular-nums text-slate-900">{inr(r.amount)}</p></div>
+                  <div><p className="text-[10px] uppercase tracking-wide text-slate-500">Paid</p><p className="text-sm font-medium tabular-nums text-emerald-600">{inr(r.paid)}</p></div>
+                  <div><p className="text-[10px] uppercase tracking-wide text-slate-500">Bill due</p><p className={`text-sm font-medium tabular-nums ${r.due ? "text-red-600" : "text-slate-400"}`}>{r.due ? inr(r.due) : "—"}</p></div>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Started {fmtDate(r.schedule.start)}
+                  {r.schedule.nextDate ? <> · Next renewal <span className="font-medium text-slate-700">{fmtDate(r.schedule.nextDate)}</span></> : r.schedule.ended ? " · Stopped" : " · One-time"}
+                </p>
+              </li>
+            ))}
+            {(breakdown.other.paid > 0 || breakdown.other.due > 0) && (
+              <li className="bg-amber-50/50 px-4 py-3.5">
+                <p className="text-[15px] font-medium text-slate-700">Other payments</p>
+                <p className="text-xs text-slate-500">No plan chosen on the bill</p>
+                <p className="mt-1.5 text-sm">
+                  <span className="text-emerald-600">Paid {inr(breakdown.other.paid)}</span>
+                  {breakdown.other.due > 0 && <span className="text-red-600"> · Due {inr(breakdown.other.due)}</span>}
+                </p>
+              </li>
+            )}
+            <li className="flex items-center justify-between bg-slate-50 px-4 py-3">
+              <span className="font-semibold text-slate-900">Total remaining</span>
+              <span className="font-semibold tabular-nums text-red-600">{inr(planTotals.remaining)}</span>
+            </li>
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[860px]">
               <thead className="bg-slate-50">
                 <tr><Th>Plan</Th><Th>Cycle</Th><Th>Start</Th><Th>Next renewal</Th><Th right>Billed till date</Th><Th right>Paid</Th><Th right>Bill due</Th><Th right>Remaining</Th></tr>
@@ -203,7 +241,38 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
         {pays.length === 0 ? (
           <Empty text="No payments yet. Use 'Add Payment' to record the first one." />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-slate-100 md:hidden">
+            {pays.map((p) => (
+              <li key={p.id} className="px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-medium text-slate-900">{[p.service, p.plan && p.plan !== NO_PLAN ? p.plan : ""].filter(Boolean).join(" · ") || "Payment"}</p>
+                    <p className="mt-0.5 text-xs text-slate-500"><span className="font-mono">{p.invoiceNo}</span> · {fmtDate(p.date)}</p>
+                    {p.note && <p className="mt-0.5 text-xs text-slate-500">{p.note}</p>}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[15px] font-semibold tabular-nums text-slate-900">{inr(p.amount)}</p>
+                    <div className="mt-1">{isPaid(p) ? <Badge tone="green">Paid · {p.mode}</Badge> : <Badge tone="red">Due</Badge>}</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  {!isPaid(p) && <Button size="sm" onClick={() => markPaid(p)}>Mark as paid</Button>}
+                  <Button size="sm" variant="secondary" onClick={() => paymentInvoicePDF(db, p)}><FileText size={14} /> PDF</Button>
+                  <Button size="sm" variant="secondary" onClick={() => setSend({ kind: "payment", payment: p })}><Send size={14} /> Send</Button>
+                  <div className="ml-auto flex">
+                    <Button size="sm" variant="ghost" onClick={() => { setErr(""); setCustomPlan(!!p.plan && p.plan !== NO_PLAN && !db.settings.plans.some((x) => planOptionLabel(x) === p.plan) && !clientPlans(c).some((x) => planName(x) === p.plan)); setForm(p); }} aria-label="Edit">
+                      <Pencil size={15} />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => del(p)} aria-label="Delete">
+                      <Trash2 size={15} className="text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[880px]">
               <thead className="bg-slate-50">
                 <tr>
@@ -253,6 +322,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
 
@@ -279,7 +349,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                   if (e.target.value === CUSTOM) { setCustomPlan(true); setForm({ ...form, plan: "" }); }
                   else { setCustomPlan(false); setForm({ ...form, plan: e.target.value }); }
                 }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none lg:rounded-lg lg:py-2 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               >
                 <option value={NO_PLAN}>No plan decided</option>
                 {clientPlans(c).length > 0 && planDecided(c) && (

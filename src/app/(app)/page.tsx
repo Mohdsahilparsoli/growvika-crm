@@ -59,14 +59,14 @@ export default function Dashboard() {
       />
 
       {isAdmin ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           <StatCard label="Clients" value={String(db.clients.length)} hint={`${db.clients.filter((c) => c.status !== "Inactive").length} active`} icon={<Users size={18} />} />
           <StatCard label="Income this month" value={inr(monthIncome)} hint={`Expenses ${inr(monthExpense)}`} tone="good" icon={<TrendingUp size={18} />} />
           <StatCard label="Pending payments" value={inr(pendingTotal)} hint={`Due from ${pending.length} clients`} tone="warn" icon={<Clock size={18} />} />
           <StatCard label="Balance left (total)" value={inr(bacha)} hint="Income − Expenses" tone={bacha >= 0 ? "default" : "bad"} icon={<Wallet size={18} />} />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           <StatCard label="My clients" value={String(myClients.length)} icon={<Users size={18} />} />
           <StatCard label="Open leads" value={String(openLeads.length)} icon={<Target size={18} />} />
           <StatCard label="Today's follow-ups" value={String(followUps.length)} tone={followUps.length ? "warn" : "default"} icon={<PhoneCall size={18} />} />
@@ -74,9 +74,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 lg:mt-6 lg:grid-cols-3 lg:gap-6">
         <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 lg:px-5">
             <h3 className="font-medium text-slate-900">Today's follow-ups</h3>
             <Link href="/leads" className="text-sm text-brand-600 hover:underline">All leads →</Link>
           </div>
@@ -85,15 +85,16 @@ export default function Dashboard() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {followUps.map((l) => (
-                <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{l.name} · {l.business}</p>
-                    <p className="text-xs text-slate-500">{l.service} · {l.stage} · {userName(l.assignedTo)}</p>
+                <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 lg:px-5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-900">{[l.name, l.business].filter(Boolean).join(" · ")}</p>
+                    <p className="truncate text-xs text-slate-500">{l.service} · {l.stage} · {userName(l.assignedTo)}</p>
+                    {l.followUp < today && <div className="mt-1"><Badge tone="red">Overdue · {fmtDate(l.followUp)}</Badge></div>}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {l.followUp < today && <Badge tone="red">Overdue · {fmtDate(l.followUp)}</Badge>}
-                    <a href={telLink(l.phone)} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">Call {formatPhone(l.phone)}</a>
-                  </div>
+                  {/* Phones: round call button. Desktop: number */}
+                  <a href={telLink(l.phone)} aria-label={`Call ${formatPhone(l.phone)}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white active:scale-90 lg:h-auto lg:w-auto lg:rounded-lg lg:border lg:border-slate-200 lg:bg-white lg:px-2.5 lg:py-1 lg:text-xs lg:text-slate-700 lg:hover:bg-slate-50">
+                    <PhoneCall size={18} className="lg:hidden" /><span className="hidden lg:inline">Call {formatPhone(l.phone)}</span>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -114,7 +115,7 @@ export default function Dashboard() {
 
         {isAdmin ? (
           <Card>
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 lg:px-5">
               <h3 className="font-medium text-slate-900">Pending payments</h3>
               <Link href="/billing" className="text-sm text-brand-600 hover:underline">Billing →</Link>
             </div>
@@ -124,7 +125,7 @@ export default function Dashboard() {
               <ul className="divide-y divide-slate-100">
                 {pending.map(({ c, bal }) => (
                   <li key={c.id}>
-                    <Link href={`/clients/${c.id}?tab=billing`} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
+                    <Link href={`/clients/${c.id}?tab=billing`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 active:bg-slate-50 lg:px-5">
                       <div>
                         <p className="text-sm font-medium text-slate-900">{c.business}</p>
                         <p className="text-xs text-slate-500">Billed {inr(billedToDate(db, c))}</p>
@@ -141,7 +142,7 @@ export default function Dashboard() {
                 <ul className="divide-y divide-slate-100">
                   {undecided.map((c) => (
                     <li key={c.id}>
-                      <Link href={`/clients/${c.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50">
+                      <Link href={`/clients/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 active:bg-slate-50 lg:px-5">
                         <div>
                           <p className="text-sm font-medium text-slate-900">{c.business}</p>
                           <p className="text-xs text-slate-500">{c.services.join(", ") || "No services yet"}</p>
@@ -173,8 +174,8 @@ export default function Dashboard() {
         )}
       </div>
 
-      <Card className="mt-6">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+      <Card className="mt-4 lg:mt-6">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 lg:px-5">
           <div>
             <h3 className="font-medium text-slate-900">Upcoming renewals</h3>
             <p className="text-xs text-slate-500">Monthly, quarterly, half-yearly and yearly plans renewing in the next 30 days</p>
@@ -186,16 +187,16 @@ export default function Dashboard() {
           <ul className="divide-y divide-slate-100">
             {renewals.map((r) => (
               <li key={r.client.id + r.label}>
-                <Link href={`/clients/${r.client.id}?tab=billing`} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 hover:bg-slate-50">
+                <Link href={`/clients/${r.client.id}?tab=billing`} className="flex items-start justify-between gap-3 px-4 py-3 hover:bg-slate-50 active:bg-slate-50 lg:px-5">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900">{r.client.business}</p>
                     <p className="text-xs text-slate-500">{r.label} · {r.cycle}{isAdmin ? ` · ${inr(r.price)} per renewal` : ""}</p>
+                    {isAdmin && r.remaining > 0 && <p className="mt-0.5 text-xs text-red-600">{inr(r.remaining)} still unpaid</p>}
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 text-right">
                     <p className="text-sm font-medium text-slate-900">{fmtDate(r.nextDate)}</p>
                     <p className={`text-xs ${r.daysLeft <= 7 ? "text-red-600" : "text-amber-600"}`}>
                       {r.daysLeft === 0 ? "Today" : r.daysLeft === 1 ? "Tomorrow" : `in ${r.daysLeft} days`}
-                      {isAdmin && r.remaining > 0 ? ` · ${inr(r.remaining)} still unpaid` : ""}
                     </p>
                   </div>
                 </Link>
@@ -206,15 +207,15 @@ export default function Dashboard() {
       </Card>
 
       {isAdmin && (
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <Card className="p-5 lg:col-span-2">
+        <div className="mt-4 grid gap-4 lg:mt-6 lg:grid-cols-3 lg:gap-6">
+          <Card className="p-4 lg:p-5 lg:col-span-2">
             <h3 className="font-medium text-slate-900">Monthly income vs expenses</h3>
             <p className="text-xs text-slate-500">Last 6 months</p>
             <div className="mt-4 h-64">
               <IncomeChart data={chart} />
             </div>
           </Card>
-          <Card className="p-5">
+          <Card className="p-4 lg:p-5">
             <h3 className="font-medium text-slate-900">Where leads come from</h3>
             <p className="text-xs text-slate-500">All leads</p>
             <ul className="mt-4 space-y-3">

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
-import { Badge, Button, Card, Empty, Input, Modal, PageHeader, Select } from "@/components/ui";
+import { Badge, Button, Card, Empty, Fab, Input, Modal, PageHeader, Select } from "@/components/ui";
 import ClientForm, { emptyClient } from "@/components/ClientForm";
 import { clientPlans, clientBalance, inr, paidFor, planDecided, statusTone, dueFor, pendingFor } from "@/lib/format";
 
@@ -33,15 +33,15 @@ export default function ClientsPage() {
         title="Clients"
         subtitle={`${list.length} clients`}
         actions={
-          <Button onClick={() => setAdding(true)}>
+          <Button onClick={() => setAdding(true)} className="max-lg:hidden">
             <Plus size={16} /> New client
           </Button>
         }
       />
 
       <Card className="mb-4 p-3">
-        <div className="grid gap-3 sm:grid-cols-[1fr_160px_160px]">
-          <div className="relative">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_160px_160px] sm:gap-3">
+          <div className="relative col-span-2 sm:col-span-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, business, phone or city" className="pl-9" />
           </div>
@@ -58,7 +58,7 @@ export default function ClientsPage() {
             const bal = pendingFor(db, c.id);
             return (
               <Link key={c.id} href={`/clients/${c.id}`}>
-                <Card className="h-full p-4 transition-shadow hover:shadow-md">
+                <Card className="h-full p-4 transition hover:shadow-md active:scale-[0.99] active:bg-slate-50">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 font-semibold text-brand-700">
@@ -93,6 +93,8 @@ export default function ClientsPage() {
           })}
         </div>
       )}
+
+      <Fab onClick={() => setAdding(true)} label="New client" />
 
       <Modal open={adding} onClose={() => setAdding(false)} title="Add a new client" wide>
         <ClientForm
