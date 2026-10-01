@@ -193,7 +193,7 @@ export default function LeadsPage() {
             )}
             <Field label="Note" full><Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
             {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
-            <div className="flex justify-between gap-2 sm:col-span-2">
+            <div className="form-actions flex justify-between gap-2 sm:col-span-2">
               {form.id ? (
                 <Button type="button" variant="danger" onClick={() => { if (confirm("Delete this lead?")) { update((d) => ({ ...d, leads: d.leads.filter((x) => x.id !== form.id) })); setForm(null); } }}>
                   <Trash2 size={14} /> Delete

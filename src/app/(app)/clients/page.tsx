@@ -53,11 +53,11 @@ export default function ClientsPage() {
       {list.length === 0 ? (
         <Card><Empty text="No clients found" /></Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
           {list.map((c) => {
             const bal = pendingFor(db, c.id);
             return (
-              <Link key={c.id} href={`/clients/${c.id}`}>
+              <Link key={c.id} href={`/clients/${c.id}`} className="min-w-0">
                 <Card className="h-full p-4 transition hover:shadow-md active:scale-[0.99] active:bg-slate-50">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3">
@@ -72,9 +72,9 @@ export default function ClientsPage() {
                     <Badge tone={statusTone(c.status)}>{c.status}</Badge>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {planDecided(c) && clientPlans(c).map((p) => <span key={p.id} className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">{p.name}{p.cycle ? ` · ${p.cycle}` : ""}</span>)}
+                    {planDecided(c) && clientPlans(c).map((p) => <span key={p.id} className="max-w-full truncate rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">{p.name}{p.cycle ? ` · ${p.cycle}` : ""}</span>)}
                     {c.services.map((s) => (
-                      <span key={s} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{s}</span>
+                      <span key={s} className="max-w-full truncate rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{s}</span>
                     ))}
                   </div>
                   <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">

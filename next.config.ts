@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         source: "/:file(logo-white.png|logo-dark.png)",
         headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
       },
+      {
+        // Launch screen and iPhone launch images
+        source: "/:path(launch.html|splash/.*)",
+        headers: [{ key: "Cache-Control", value: "public, max-age=3600, stale-while-revalidate=604800" }],
+      },
     ];
   },
 };

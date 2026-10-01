@@ -220,8 +220,15 @@ export function Modal({
             </button>
           </div>
         </div>
-        <div className="pb-safe overflow-y-auto overscroll-contain">
-          <div className="p-4 lg:p-5 pb-8 lg:pb-5">{children}</div>
+        {/* No sideways scroll; on phones the Save/Cancel row sticks to the bottom of the sheet */}
+        <div className="pb-safe min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
+          <div
+            className="min-w-0 p-4 pb-5 lg:p-5
+              [&_.form-actions]:sticky [&_.form-actions]:bottom-0 [&_.form-actions]:z-10 [&_.form-actions]:-mx-4 [&_.form-actions]:-mb-5 [&_.form-actions]:border-t [&_.form-actions]:border-slate-100 [&_.form-actions]:bg-white/95 [&_.form-actions]:px-4 [&_.form-actions]:py-3 [&_.form-actions]:backdrop-blur
+              lg:[&_.form-actions]:static lg:[&_.form-actions]:mx-0 lg:[&_.form-actions]:mb-0 lg:[&_.form-actions]:border-0 lg:[&_.form-actions]:bg-transparent lg:[&_.form-actions]:p-0 lg:[&_.form-actions]:backdrop-blur-none"
+          >
+            {children}
+          </div>
         </div>
       </div>
     </div>
@@ -230,7 +237,7 @@ export function Modal({
 
 export function Field({ label, children, full }: { label: string; children: ReactNode; full?: boolean }) {
   return (
-    <label className={`flex flex-col gap-1 ${full ? "sm:col-span-2" : ""}`}>
+    <label className={`flex min-w-0 flex-col gap-1 ${full ? "sm:col-span-2" : ""}`}>
       <span className="text-xs font-medium text-slate-600">{label}</span>
       {children}
     </label>

@@ -216,10 +216,10 @@ export default function ClientForm({
                     const sched = planSchedule({ ...r, startDate: r.startDate || c.joinedAt }, c);
                     return (
                       <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                        <label className="text-xs text-slate-500">Plan start date
+                        <label className="block min-w-0 text-xs text-slate-500">Plan start date
                           <Input type="date" className="mt-1" value={r.startDate || c.joinedAt} onChange={(e) => updateRow(r.id, { startDate: e.target.value })} />
                         </label>
-                        <label className="text-xs text-slate-500">Stopped on (optional, if the client stops renewing)
+                        <label className="block min-w-0 text-xs text-slate-500">Stopped on (optional, if the client stops renewing)
                           <Input type="date" className="mt-1" value={r.endDate ?? ""} onChange={(e) => updateRow(r.id, { endDate: e.target.value || undefined })} />
                         </label>
                         <p className="text-xs text-slate-600 sm:col-span-2">
@@ -262,7 +262,7 @@ export default function ClientForm({
         <Textarea value={c.notes} onChange={(e) => set("notes", e.target.value)} placeholder="e.g. Call only in the evening" />
       </Field>
       {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
-      <div className="flex justify-end gap-2 sm:col-span-2">
+      <div className="form-actions flex justify-end gap-2 sm:col-span-2">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit">Save</Button>
       </div>

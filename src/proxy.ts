@@ -27,6 +27,6 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Skip Next.js files, icons, logos and the app manifest
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|logo-white.png|logo-dark.png).*)"],
+  // Skip Next.js files, icons, logos, the app manifest and the launch screen
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|logo-white.png|logo-dark.png|launch.html|splash/).*)"],
 };

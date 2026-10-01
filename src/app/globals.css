@@ -88,3 +88,68 @@ a,
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; }
 }
+
+/* iPhone: date/time inputs have a built-in minimum width that pushed popups sideways */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.875rem;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.25em;
+}
+@media (min-width: 1024px) {
+  input[type="date"] { min-height: 2.375rem; }
+}
+/* Fields inside forms may shrink instead of overflowing the popup */
+form > * { min-width: 0; }
+
+/* ---------- Launch / splash screen ---------- */
+.gv-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: #03081b;
+}
+.gv-splash-logo {
+  width: 168px;
+  height: auto;
+  animation: gv-splash-logo 0.9s ease-out both;
+}
+.gv-splash-bar {
+  position: relative;
+  width: 120px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.12);
+  animation: gv-fade-in 0.5s 0.25s ease-out both;
+}
+.gv-splash-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 99px;
+  background: #3d65fe;
+  animation: gv-splash-bar 1.1s ease-in-out infinite;
+}
+@keyframes gv-splash-logo {
+  from { opacity: 0.6; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes gv-splash-bar {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(260%); }
+}

@@ -315,7 +315,7 @@ export default function ClientDetail() {
               <Input type="file" onChange={(e) => setComm({ ...comm, fileName: e.target.files?.[0]?.name ?? comm.fileName })} />
             </Field>
             {commErr && <p className="text-sm text-red-600 sm:col-span-2">{commErr}</p>}
-            <div className="flex justify-between gap-2 sm:col-span-2">
+            <div className="form-actions flex justify-between gap-2 sm:col-span-2">
               {comm.id ? (
                 <Button type="button" variant="danger" onClick={() => { update((d) => ({ ...d, comms: d.comms.filter((x) => x.id !== comm.id) })); setComm(null); }}>
                   <Trash2 size={14} /> Delete

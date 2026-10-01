@@ -256,7 +256,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
                     <div className="mt-1">{isPaid(p) ? <Badge tone="green">Paid · {p.mode}</Badge> : <Badge tone="red">Due</Badge>}</div>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   {!isPaid(p) && <Button size="sm" onClick={() => markPaid(p)}>Mark as paid</Button>}
                   <Button size="sm" variant="secondary" onClick={() => paymentInvoicePDF(db, p)}><FileText size={14} /> PDF</Button>
                   <Button size="sm" variant="secondary" onClick={() => setSend({ kind: "payment", payment: p })}><Send size={14} /> Send</Button>
@@ -394,7 +394,7 @@ export default function BillingPanel({ clientId }: { clientId: string }) {
               </p>
             )}
             {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
-            <div className="flex justify-end gap-2 sm:col-span-2">
+            <div className="form-actions flex justify-end gap-2 sm:col-span-2">
               <Button type="button" variant="secondary" onClick={() => setForm(null)}>Cancel</Button>
               <Button type="submit">{form.status === "Due" ? "Save as due" : "Save payment"}</Button>
             </div>

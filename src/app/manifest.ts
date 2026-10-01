@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "GrowVika CRM",
     short_name: "GrowVika",
     description: "GrowVika client management, billing and company accounts",
-    start_url: "/",
+    start_url: "/launch.html", // instant splash page, then the app
     scope: "/",
     display: "standalone",
     orientation: "portrait",

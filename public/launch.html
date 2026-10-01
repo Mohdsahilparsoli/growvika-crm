@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#03081B">
+<title>GrowVika CRM</title>
+<!-- Home-screen app opens here first: a static page served instantly from the CDN.
+     It shows the splash animation while the real app (which needs the server) loads. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #03081b; }
+  .s { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+  .s img { width: 168px; height: auto; animation: l .9s ease-out both; }
+  .b { position: relative; width: 120px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); animation: f .5s .25s ease-out both; }
+  .b span { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: 99px; background: #3d65fe; animation: m 1.1s ease-in-out infinite; }
+  @keyframes l { from { opacity: .6; transform: scale(.96); } to { opacity: 1; transform: none; } }
+  @keyframes f { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes m { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
+</style>
+</head>
+<body>
+<div class="s"><img src="/logo-white.png" alt="GrowVika"><div class="b"><span></span></div></div>
+<script>location.replace("/");</script>
+</body>
+</html>

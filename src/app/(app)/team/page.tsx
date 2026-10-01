@@ -240,7 +240,7 @@ export default function TeamPage() {
               <Select value={form.role} disabled={form.id === user!.id} onChange={(e) => setForm({ ...form, role: e.target.value as Role })} options={[{ value: "employee", label: "Employee" }, { value: "admin", label: "Admin" }]} />
             </Field>
             {err && <p className="text-sm text-red-600 sm:col-span-2">{err}</p>}
-            <div className="flex justify-end gap-2 sm:col-span-2">
+            <div className="form-actions flex justify-end gap-2 sm:col-span-2">
               <Button type="button" variant="secondary" onClick={() => setForm(null)}>Cancel</Button>
               <Button type="submit">Save</Button>
             </div>
