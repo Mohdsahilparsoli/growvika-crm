@@ -20,6 +20,6 @@
 </head>
 <body>
 <div class="s"><img src="/logo-white.png" alt="GrowVika"><div class="b"><span></span></div></div>
-<script>location.replace("/");</script>
+<script>try{sessionStorage.setItem("gv_launch",String(Date.now()));sessionStorage.removeItem("gv_splash_done");}catch(e){}location.replace("/");</script>
 </body>
 </html>
